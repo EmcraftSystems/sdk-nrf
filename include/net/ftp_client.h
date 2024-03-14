@@ -249,6 +249,13 @@ enum ftp_put_type {
  */
 typedef void (*ftp_client_callback_t)(const uint8_t *msg, uint16_t len);
 
+/**
+ * @brief FTP asynchronous callback function for fragmented file transfer.
+ *
+ * @return length of data fragment
+ */
+typedef uint16_t (*ftp_client_send_callback_t)(void);
+
 /**@brief Initialize the FTP client library.
  *
  * @param ctrl_callback Callback for FTP command result.
@@ -381,6 +388,23 @@ int ftp_get(const char *file);
  * @retval ftp_reply_code or negative if error
  */
 int ftp_put(const char *file, const uint8_t *data, uint16_t length, int type);
+
+/**@brief Put data to a file
+ * If file does not exist, create the file
+ *
+ * @param file Target file name
+ * @param data Data buffer
+ * @param callback Callback to request data fragments
+ * @param type specify FTP put types, see enum ftp_reply_code
+ *
+ * @note Sends data until callback returns 0
+ * Callback function should put new data to the same buffer
+ * that has been passed to ftp_put_fragmented() as data arg
+ *
+ * @retval ftp_reply_code or negative if error
+ */
+int ftp_put_fragmented(const char *file, const uint8_t *data,
+						ftp_client_send_callback_t callback, int type);
 
 #ifdef __cplusplus
 }
