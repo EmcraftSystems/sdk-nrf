@@ -21,6 +21,8 @@ LOG_MODULE_REGISTER(ftp_client, CONFIG_FTP_CLIENT_LOG_LEVEL);
 #define FTP_MAX_BUFFER_SIZE	708 /* align with MSS on modem side */
 #define FTP_DATA_TIMEOUT_SEC	60  /* time in seconds to wait for "Transfer complete" */
 
+#define FTP_FRAGMENTED_FILE_SIZE 1 /* file size for fragmented transfer */
+
 #define FTP_CODE_ANY		0
 
 #define FTP_STACK_SIZE		KB(2)
@@ -55,6 +57,7 @@ static struct data_task {
 	char *ctrl_msg;		/* PSAV resposne */
 	uint8_t *data;		/* TX data */
 	uint16_t length;	/* TX length */
+	ftp_client_send_callback_t callback; /* Callback for fragmented file transfer */
 } data_task_param;
 
 static bool ftp_inactivity;
@@ -263,6 +266,44 @@ static int do_ftp_send_data(const char *pasv_msg, uint8_t *message, uint16_t len
 	return ret;
 }
 
+/**@brief Send FTP data via socket
+ * Continues to send data to the server until data_task_param.callback() returns 0
+ */
+static int do_ftp_send_data_fragmented(const char *pasv_msg, uint8_t *message)
+{
+	int ret;
+	uint32_t offset = 0;
+	uint16_t len = 0;
+
+	/* Establish data channel */
+	ret = establish_data_channel(pasv_msg);
+	if (ret) {
+		return ret;
+	}
+
+	do {
+		offset = 0;
+		/* Request data fragment */
+		len = data_task_param.callback();
+		while (offset < len) {
+			ret = send(client.data_sock, message + offset, len - offset, 0);
+			if (ret < 0) {
+				LOG_ERR("send data failed: %d", -errno);
+				ret = -errno;
+				goto exit;
+			}
+			LOG_DBG("DATA sent %d", ret);
+			offset += ret;
+			ret = 0;
+		}
+	} while (len != 0);
+
+exit:
+	close(client.data_sock);
+	ftp_inactivity = false;
+	return ret;
+}
+
 /**@brief Receive FTP message from socket
  */
 static int do_ftp_recv_ctrl(bool post_result, int success_code)
@@ -396,7 +437,12 @@ static void data_task(struct k_work *item)
 	if (task_param->task == TASK_RECEIVE) {
 		do_ftp_recv_data(task_param->ctrl_msg);
 	} else if (task_param->task == TASK_SEND) {
-		do_ftp_send_data(task_param->ctrl_msg, task_param->data, task_param->length);
+		if (task_param->callback != NULL) {
+			do_ftp_send_data_fragmented(task_param->ctrl_msg, task_param->data);
+		} else {
+			do_ftp_send_data(task_param->ctrl_msg,
+							task_param->data, task_param->length);
+		}
 	}
 	atomic_set(&data_task_running, false);
 }
@@ -766,7 +812,11 @@ int ftp_get(const char *file)
 	return run_data_task();
 }
 
-int ftp_put(const char *file, const uint8_t *data, uint16_t length, int type)
+/**@brief Put data to a file
+ * Called from ftp_put() and ftp_put_fragmented().
+ */
+static int _ftp_put(const char *file, const uint8_t *data, uint16_t length,
+			int type, ftp_client_send_callback_t callback)
 {
 	int ret;
 	char put_cmd[128];
@@ -802,6 +852,7 @@ int ftp_put(const char *file, const uint8_t *data, uint16_t length, int type)
 		data_task_param.task = TASK_SEND;
 		data_task_param.data = (uint8_t *)data;
 		data_task_param.length = length;
+		data_task_param.callback = callback;
 	}
 
 	if (type == FTP_PUT_NORMAL) {
@@ -829,6 +880,17 @@ int ftp_put(const char *file, const uint8_t *data, uint16_t length, int type)
 	}
 
 	return ret;
+}
+
+int ftp_put(const char *file, const uint8_t *data, uint16_t length, int type)
+{
+	return _ftp_put(file, data, length, type, NULL);
+}
+
+int ftp_put_fragmented(const char *file, const uint8_t *data,
+						ftp_client_send_callback_t callback, int type)
+{
+	return _ftp_put(file, data, FTP_FRAGMENTED_FILE_SIZE, type, callback);
 }
 
 int ftp_init(ftp_client_callback_t ctrl_callback, ftp_client_callback_t data_callback)
