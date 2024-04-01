@@ -6,7 +6,6 @@
 
 if(CONFIG_BOARD_THINGY91_NRF9160 AND NOT DEFINED CONFIG_MCUBOOT)
 	zephyr_library()
-	zephyr_library_sources(adp5360_init.c)
 endif()
 
 if(CONFIG_BOARD_THINGY91_NRF9160_NS)
@@ -14,7 +13,6 @@ if(CONFIG_BOARD_THINGY91_NRF9160_NS)
 	# as we can't instruct TF-M to run it.
 	if(CONFIG_BUILD_WITH_TFM)
 		zephyr_library()
-		zephyr_library_sources(adp5360_init.c)
 	endif()
 
 	# Use static partition layout to ensure the partition layout remains
