@@ -42,6 +42,13 @@ config MODEM_ANTENNA_AT_COEX0
 	  Defines the AT%XCOEX0 command to be sent to the modem. Leave
 	  empty if this command should not be sent.
 
+config MODEM_ANTENNA_AT_COEX2
+	string "AT%XCOEX2 command"
+	default "AT\%XCOEX2"
+	help
+	  Defines the AT%XCOEX2 command to be sent to the modem. Leave
+	  empty if this command should not be sent.
+
 config MODEM_ANTENNA_AT_MIPIRFFEDEV
 	string "AT%XMIPIRFFEDEV command"
 	help
