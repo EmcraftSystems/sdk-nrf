@@ -48,8 +48,6 @@ enum app_event_type_flags {
 	 *  Flag set internally by Application Event Manager.
 	 */
 	APP_EVENT_TYPE_FLAGS_HAS_DYNDATA = APP_EVENT_TYPE_FLAGS_SYSTEM_START,
-	/** message can be forwarded using Inter-MCU Link.*/
-	APP_EVENT_TYPE_FLAGS_DO_NOT_FORWARD,
 	/** marks beginning of flags set by user.*/
 	APP_EVENT_TYPE_FLAGS_USER_SETTABLE_START,
 	/** enables event logging from the application start.
