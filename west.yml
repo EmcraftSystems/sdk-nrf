@@ -132,7 +132,8 @@ manifest:
           compare-by-default: true
     - name: mcuboot
       repo-path: sdk-mcuboot
-      revision: v2.0.99-ncs1-1
+      revision: voxelbotics-v2.0.99-ncs1-1-branch
+      remote: voxelbotics
       path: bootloader/mcuboot
     - name: qcbor
       url: https://github.com/laurencelundblade/QCBOR
