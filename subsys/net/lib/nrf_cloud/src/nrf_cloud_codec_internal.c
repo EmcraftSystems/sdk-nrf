@@ -79,6 +79,8 @@ static const char *const sensor_type_str[] = {
 #define TOPIC_VAL_RCV_PGPS	(NRF_CLOUD_JSON_VAL_TOPIC_PGPS     NRF_CLOUD_JSON_VAL_TOPIC_RCV)
 #define TOPIC_VAL_RCV_C2D	(NRF_CLOUD_JSON_VAL_TOPIC_C2D      NRF_CLOUD_JSON_VAL_TOPIC_RCV)
 #define TOPIC_VAL_RCV_GND_FIX	(NRF_CLOUD_JSON_VAL_TOPIC_GND_FIX  NRF_CLOUD_JSON_VAL_TOPIC_RCV)
+#define TOPIC_VAL_RCV_POST_ORDER \
+	(NRF_CLOUD_JSON_VAL_TOPIC_POST_ORDER NRF_CLOUD_JSON_VAL_TOPIC_RCV)
 
 /* Max length of a NRF_CLOUD_JSON_MSG_TYPE_VAL_DISCONNECT message */
 #define NRF_CLOUD_JSON_MSG_MAX_LEN_DISCONNECT	200
@@ -623,6 +625,8 @@ enum nrf_cloud_rcv_topic nrf_cloud_dc_rx_topic_decode(const char * const topic)
 		return NRF_CLOUD_RCV_TOPIC_LOCATION;
 	} else if (strstr(topic, TOPIC_VAL_RCV_C2D)) {
 		return NRF_CLOUD_RCV_TOPIC_GENERAL;
+	} else if (strstr(topic, TOPIC_VAL_RCV_POST_ORDER)) {
+		return NRF_CLOUD_RCV_TOPIC_POST_ORDER;
 	} else {
 		return NRF_CLOUD_RCV_TOPIC_UNKNOWN;
 	}

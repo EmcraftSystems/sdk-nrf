@@ -125,6 +125,8 @@ enum nrf_cloud_evt_type {
 	 * This event is only sent if @kconfig{CONFIG_NRF_CLOUD_FOTA_AUTO_START_JOB} is disabled.
 	 */
 	NRF_CLOUD_EVT_FOTA_JOB_AVAILABLE,
+	/** A post order message was received. */
+	NRF_CLOUD_EVT_RX_POST_ORDER,
 	/** An error occurred. The status field in the event struct will
 	 *  be populated with a @ref nrf_cloud_error_status value.
 	 */
