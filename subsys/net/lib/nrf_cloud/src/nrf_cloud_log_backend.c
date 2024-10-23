@@ -564,10 +564,7 @@ static int logger_out(uint8_t *buf, size_t size, void *ctx)
 			 */
 			buf[size] = '\0';
 		} else {
-			printk("buf %p..%p is not inside our log_buf %p..%p\n",
-				buf, &buf[size], log_buf,
-				&log_buf[CONFIG_NRF_CLOUD_LOG_BUF_SIZE]);
-			return orig_size;
+			goto end;
 		}
 
 		extra = 3;
