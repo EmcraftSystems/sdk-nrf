@@ -61,6 +61,13 @@ enum app_event_type_flags {
 	APP_EVENT_TYPE_FLAGS_USER_DEFINED_START = APP_EVENT_TYPE_FLAGS_COUNT,
 };
 
+/**
+ * @brief List of bits in event handling flags.
+ */
+enum app_event_handling_flags {
+	APP_EVENT_HANDLING_DO_NOT_FORWARD,
+};
+
 /** @brief Get event type flag's value.
  *
  * @param flag Selected event type flag.

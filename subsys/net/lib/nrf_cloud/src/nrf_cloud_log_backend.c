@@ -144,22 +144,11 @@ RING_BUF_DECLARE(log_nrf_cloud_rb, RING_BUF_SIZE);
 
 static int send_ring_buffer(void);
 
-static void logger_init(const struct log_backend *const backend)
+static void set_filters(void)
 {
-	static bool initialized;
 	uint32_t actual_level;
 	int i;
 	int sid;
-
-	if ((backend != &log_nrf_cloud_backend) || initialized) {
-		return;
-	}
-	initialized = true;
-
-	nrf_cloud_log_init();
-	LOG_INF("nRF Cloud logging mode:%s, level:%d",
-		IS_ENABLED(CONFIG_NRF_CLOUD_LOG_DICTIONARY_LOGGING_ENABLED) ? "dictionary" : "text",
-		nrf_cloud_log_control_get());
 
 	LOG_DBG("Filtering lower level log sources");
 	for (i = 0; i < ARRAY_SIZE(filtered_modules); i++) {
@@ -184,6 +173,24 @@ static void logger_init(const struct log_backend *const backend)
 		LOG_DBG("%d. log:%s, srcid:%u, actual_level:%u",
 			i, filtered_modules[i], sid, actual_level);
 	}
+}
+
+static void logger_init(const struct log_backend *const backend)
+{
+	static bool initialized;
+
+	if ((backend != &log_nrf_cloud_backend) || initialized) {
+		return;
+	}
+
+	if ((CONFIG_LOG_BACKEND_NRF_CLOUD_OUTPUT_DEFAULT != LOG_OUTPUT_TEXT) &&
+	    !IS_ENABLED(CONFIG_NRF_CLOUD_MQTT)) {
+		LOG_ERR("Only text mode logs supported with current cloud transport");
+		return;
+	}
+	initialized = true;
+
+	nrf_cloud_log_init();
 
 	LOG_DBG("domain name:%s, num domains:%u, num sources:%u",
 		log_domain_name_get(Z_LOG_LOCAL_DOMAIN_ID),
@@ -196,6 +203,7 @@ void logs_backend_enable(bool enable)
 	if (enable) {
 		logger_init(&log_nrf_cloud_backend);
 		log_backend_enable(&log_nrf_cloud_backend, NULL, nrf_cloud_log_control_get());
+		set_filters();
 	} else {
 		log_backend_disable(&log_nrf_cloud_backend);
 	}
@@ -343,6 +351,7 @@ static int logger_format_set(const struct log_backend *const backend, uint32_t l
 static void logger_notify(const struct log_backend *const backend, enum log_backend_evt event,
 		       union log_backend_evt_arg *arg)
 {
+	static uint32_t lines;
 	if ((backend != &log_nrf_cloud_backend) ||
 	    (event != LOG_BACKEND_EVT_PROCESS_THREAD_DONE) ||
 	    (logger_is_ready(backend) != 0)) {
@@ -351,15 +360,18 @@ static void logger_notify(const struct log_backend *const backend, enum log_back
 
 	/* Flush our transmission buffer */
 	send_ring_buffer();
-	if (CONFIG_NRF_CLOUD_LOG_LOG_LEVEL >= LOG_LEVEL_DBG) {
-		LOG_DBG("Buffered lines:%u, bytes:%u; logged lines:%u, bytes:%u; "
-			"sent lines:%u, bytes:%u; dropped lines:%u",
-			log_buffered_cnt(), ring_buf_size_get(&log_nrf_cloud_rb),
-			stats.lines_rendered, stats.bytes_rendered,
-			stats.lines_sent, stats.bytes_sent,
-			stats.lines_dropped);
-	} else {
-		LOG_INF("Sent lines:%u, bytes:%u", stats.lines_sent, stats.bytes_sent);
+	if (stats.lines_sent - lines) {
+		if (CONFIG_NRF_CLOUD_LOG_LOG_LEVEL >= LOG_LEVEL_DBG) {
+			LOG_DBG("Buffered lines:%u, bytes:%u; logged lines:%u, bytes:%u; "
+					"sent lines:%u, bytes:%u; dropped lines:%u",
+					log_buffered_cnt(), ring_buf_size_get(&log_nrf_cloud_rb),
+					stats.lines_rendered, stats.bytes_rendered,
+					stats.lines_sent, stats.bytes_sent,
+					stats.lines_dropped);
+		} else {
+			LOG_INF("Sent lines:%u, bytes:%u", stats.lines_sent, stats.bytes_sent);
+		}
+		lines = stats.lines_sent;
 	}
 }
 
@@ -564,10 +576,7 @@ static int logger_out(uint8_t *buf, size_t size, void *ctx)
 			 */
 			buf[size] = '\0';
 		} else {
-			printk("buf %p..%p is not inside our log_buf %p..%p\n",
-				buf, &buf[size], log_buf,
-				&log_buf[CONFIG_NRF_CLOUD_LOG_BUF_SIZE]);
-			return orig_size;
+			goto end;
 		}
 
 		extra = 3;

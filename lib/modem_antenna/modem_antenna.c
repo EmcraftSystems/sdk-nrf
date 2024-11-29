@@ -34,6 +34,7 @@ static void on_modem_lib_init(int ret, void *ctx)
 
 	set_antenna_configuration(CONFIG_MODEM_ANTENNA_AT_MAGPIO);
 	set_antenna_configuration(CONFIG_MODEM_ANTENNA_AT_COEX0);
+	set_antenna_configuration(CONFIG_MODEM_ANTENNA_AT_COEX2);
 	set_antenna_configuration(CONFIG_MODEM_ANTENNA_AT_MIPIRFFEDEV);
 	set_antenna_configuration(CONFIG_MODEM_ANTENNA_AT_MIPIRFFECTRL_INIT);
 	set_antenna_configuration(CONFIG_MODEM_ANTENNA_AT_MIPIRFFECTRL_ON);
