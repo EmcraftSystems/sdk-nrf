@@ -132,6 +132,7 @@ extern "C" {
 				 "");						\
 		if (event != NULL) {						\
 			event->header.type_id = _EVENT_ID(ename);		\
+			event->header.eh_flags = 0;				\
 		}								\
 		return event;							\
 	}
@@ -227,6 +228,9 @@ extern "C" {
 struct app_event_header {
 	/** Linked list node used to chain events. */
 	sys_snode_t node;
+
+	/** Array of flags specific for event handling.*/
+	uint8_t eh_flags;
 
 	/** Pointer to the event type object. */
 	const struct event_type *type_id;
