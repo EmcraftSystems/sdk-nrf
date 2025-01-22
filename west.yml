@@ -41,6 +41,8 @@ manifest:
       url-base: https://github.com/BabbleSim
     - name: bosch
       url-base: https://github.com/boschsensortec
+    - name: onomondo
+      url-base: https://github.com/onomondo
 
   # If not otherwise specified, the projects below should be obtained
   # from the ncs remote.
@@ -272,6 +274,11 @@ manifest:
       revision: v1.5.2400
       groups:
         - bsec
+    - name: nrf-softsim
+      repo-path: nrf-softsim
+      remote: onomondo
+      path: modules/lib/onomondo-softsim
+      revision: v4.0.2
 
 
   # West-related configuration for the nrf repository.
