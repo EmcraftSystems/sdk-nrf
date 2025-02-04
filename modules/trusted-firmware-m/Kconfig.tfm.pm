@@ -9,7 +9,7 @@ menu "TF-M memory regions"
 config PM_PARTITION_SIZE_TFM_SRAM
 	hex
 	prompt "Memory reserved for TFM_RAM" if !TFM_PROFILE_TYPE_MINIMAL
-	default 0x6000 if TFM_PROFILE_TYPE_MINIMAL
+	default 0x8000 if TFM_PROFILE_TYPE_MINIMAL
 	default 0x18000 if SOC_SERIES_NRF91X && TFM_REGRESSION_S
 	default 0x16000 if SOC_SERIES_NRF91X
 	default 0x30000
