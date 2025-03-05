@@ -641,7 +641,7 @@ static void install_smp_update(struct nrf_cloud_fota_job *fota)
 	 * when called after image installation.
 	 * For now, just use the standard FOTA flow: reboot and then read the version on startup.
 	 */
-	int ret = pending_fota_job_validate();
+	int ret = nrf_cloud_fota_smp_install();
 
 	if (ret < 0) {
 		current_fota.status = NRF_CLOUD_FOTA_FAILED;
