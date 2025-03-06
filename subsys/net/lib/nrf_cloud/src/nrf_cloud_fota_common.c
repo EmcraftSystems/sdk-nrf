@@ -383,8 +383,8 @@ static enum nrf_cloud_fota_validate_status modem_full_fota_validate_get(void)
 static enum nrf_cloud_fota_validate_status smp_fota_validate_get(void)
 {
 #if defined(CONFIG_NRF_CLOUD_FOTA_SMP)
-	return nrf_cloud_fota_smp_install() ?
-		NRF_CLOUD_FOTA_VALIDATE_FAIL : NRF_CLOUD_FOTA_VALIDATE_PASS;
+	/* TODO: validate the new firmware */
+	return NRF_CLOUD_FOTA_VALIDATE_PASS;
 #endif
 	return NRF_CLOUD_FOTA_VALIDATE_UNKNOWN;
 }
@@ -499,8 +499,6 @@ int nrf_cloud_pending_fota_job_process(struct nrf_cloud_settings_fota_job * cons
 		job->validate = boot_fota_validate_get(job->bl_flags);
 	} else if (job->type == NRF_CLOUD_FOTA_SMP) {
 		job->validate = smp_fota_validate_get();
-		/* TODO: reboot for now, but this should not be necessary */
-		*reboot_required = true;
 	} else {
 		LOG_ERR("Unknown FOTA job type: %d", job->type);
 		return -ENOENT;
