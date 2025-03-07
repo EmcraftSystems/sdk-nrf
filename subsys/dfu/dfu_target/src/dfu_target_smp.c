@@ -67,7 +67,12 @@ int dfu_target_smp_client_init(void)
 {
 	int rc;
 
+#ifdef CONFIG_MCUMGR_TRANSPORT_UART
 	rc = smp_client_object_init(&smp_client, SMP_SERIAL_TRANSPORT);
+#endif
+#ifdef CONFIG_MCUMGR_TRANSPORT_UDP
+	rc = smp_client_object_init(&smp_client, SMP_UDP_IPV4_TRANSPORT);
+#endif
 	if (rc) {
 		return rc;
 	}
