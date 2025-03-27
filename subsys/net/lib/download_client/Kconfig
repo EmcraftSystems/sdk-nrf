@@ -145,6 +145,10 @@ config DOWNLOAD_CLIENT_SHELL
 	bool "Enable shell"
 	depends on SHELL
 
+config DOWNLOAD_CLIENT_WRAPPER
+	bool "Enable single thread API wrapper"
+	default n
+
 module=DOWNLOAD_CLIENT
 module-dep=LOG
 module-str=Download client

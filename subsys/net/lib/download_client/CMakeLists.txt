@@ -21,4 +21,9 @@ zephyr_library_sources_ifdef(
 	src/shell.c
 )
 
+zephyr_library_sources_ifdef(
+	CONFIG_DOWNLOAD_CLIENT_WRAPPER
+	src/dlc_wrapper.c
+)
+
 zephyr_include_directories(./include)

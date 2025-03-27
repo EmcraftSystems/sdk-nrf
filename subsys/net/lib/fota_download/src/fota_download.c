@@ -9,6 +9,9 @@
 #include <zephyr/sys/hash_function.h>
 #include <net/fota_download.h>
 #include <net/download_client.h>
+#ifdef CONFIG_DOWNLOAD_CLIENT_WRAPPER
+#include <net/dlc_wrapper.h>
+#endif
 #include <pm_config.h>
 #include <zephyr/net/socket.h>
 
@@ -35,7 +38,10 @@ static const char *dl_host;
 static const char *dl_file;
 static uint32_t dl_host_hash;
 static uint32_t dl_file_hash;
+#ifndef CONFIG_DOWNLOAD_CLIENT_WRAPPER
 static struct download_client dlc;
+#endif
+static struct download_client *dl_client;
 /** SMP MCUBoot image type */
 static bool use_smp_dfu_target;
 static struct k_work_delayable  dlc_with_offset_work;
@@ -138,7 +144,7 @@ static size_t file_size_get(size_t *size)
 	*size = ext_file_sz;
 	return 0;
 #endif
-	return download_client_file_size_get(&dlc, size);
+	return download_client_file_size_get(dl_client, size);
 }
 
 static size_t downloaded_size_get(size_t *size)
@@ -147,7 +153,7 @@ static size_t downloaded_size_get(size_t *size)
 	*size = ext_rcvd_sz;
 	return 0;
 #endif
-	return download_client_downloaded_size_get(&dlc, size);
+	return download_client_downloaded_size_get(dl_client, size);
 }
 
 static int disconnect(void)
@@ -155,7 +161,7 @@ static int disconnect(void)
 #if defined(CONFIG_FOTA_DOWNLOAD_EXTERNAL_DL)
 	return 0;
 #endif
-	return download_client_disconnect(&dlc);
+	return download_client_disconnect(dl_client);
 }
 
 static int download_client_callback(const struct download_client_evt *event)
@@ -366,10 +372,20 @@ static int get_from_offset(const size_t offset)
 		return 0;
 	}
 
-	int err = download_client_get(&dlc, dl_host, &dlc.config, dl_file, offset);
+#ifdef CONFIG_DOWNLOAD_CLIENT_WRAPPER
+	if (!dlc_wrapper_is_idle()) {
+		LOG_ERR("cannot start download, busy");
+		return -EBUSY;
+	}
+	dlc_wrapper_set_callback(download_client_callback);
+#endif
+
+	int err = download_client_get(dl_client, dl_host, &dl_client->config,
+			dl_file, offset);
 
 	if (err != 0) {
-		LOG_ERR("%s failed to start download with error %d", __func__, err);
+		LOG_ERR("%s failed to start download with error %d", __func__,
+				err);
 		set_error_state(FOTA_DOWNLOAD_ERROR_CAUSE_DOWNLOAD_FAILED);
 		return err;
 	}
@@ -636,7 +652,15 @@ int fota_download(const char *host, const char *file,
 
 	atomic_set_bit(&flags, FLAG_FIRST_FRAGMENT);
 
-	err = download_client_get(&dlc, dl_host, &config, dl_file, 0);
+#ifdef CONFIG_DOWNLOAD_CLIENT_WRAPPER
+	if (!dlc_wrapper_is_idle()) {
+		LOG_ERR("cannot start download, busy");
+		return -EBUSY;
+	}
+	dlc_wrapper_set_callback(download_client_callback);
+#endif
+
+	err = download_client_get(dl_client, dl_host, &config, dl_file, 0);
 	if (err != 0) {
 		atomic_clear_bit(&flags, FLAG_DOWNLOADING);
 		(void)disconnect();
@@ -668,20 +692,25 @@ int fota_download_start_with_image_type(const char *host, const char *file,
 
 static int fota_download_object_init(void)
 {
+#ifndef CONFIG_DOWNLOAD_CLIENT_WRAPPER
 	int err;
 
-	k_work_init_delayable(&dlc_with_offset_work, download_with_offset);
-
-	err = download_client_init(&dlc, download_client_callback);
+	dl_client = &dlc;
+	err = download_client_init(dl_client, download_client_callback);
 	if (err != 0) {
 		return err;
 	}
+#else
+	dl_client = dlc_wrapper_get_client();
+#endif
+
+	k_work_init_delayable(&dlc_with_offset_work, download_with_offset);
 
 #ifdef CONFIG_FOTA_DOWNLOAD_NATIVE_TLS
 	/* Enable native TLS for the download client socket
 	 * if configured.
 	 */
-	dlc.set_native_tls = true;
+	dl_client->set_native_tls = true;
 #endif
 
 	initialized = true;
