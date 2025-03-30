@@ -19,7 +19,12 @@ LOG_MODULE_REGISTER(modem_key_mgmt, CONFIG_MODEM_KEY_MGMT_LOG_LEVEL);
 
 /* Protect the shared scratch_buf with a mutex. */
 static K_MUTEX_DEFINE(key_mgmt_mutex);
-static char scratch_buf[4096];
+#define BUF_SZ 4096
+#ifdef CONFIG_MODEM_KEY_MGMT_USE_MALLOC
+static char *scratch_buf;
+#else
+static char scratch_buf[BUF_SZ];
+#endif
 
 static bool cmee_is_active(void)
 {
@@ -97,15 +102,19 @@ static int translate_error(int err)
 
 /* Read the given credential into the static buffer */
 static int key_fetch(nrf_sec_tag_t tag,
-		     enum modem_key_mgmt_cred_type cred_type)
+		     enum modem_key_mgmt_cred_type cred_type, void *buf,
+		     size_t sz)
 {
 	int err;
 	bool cmee_was_active;
 
+	if (!buf) {
+		return -ENOMEM;
+	}
+
 	cmee_enable(&cmee_was_active);
 
-	err = nrf_modem_at_cmd(scratch_buf, sizeof(scratch_buf),
-			       "AT%%CMNG=2,%u,%d", tag, cred_type);
+	err = nrf_modem_at_cmd(buf, sz, "AT%%CMNG=2,%u,%d", tag, cred_type);
 
 	if (!cmee_was_active) {
 		cmee_disable();
@@ -157,7 +166,18 @@ int modem_key_mgmt_read(nrf_sec_tag_t sec_tag,
 	}
 
 	k_mutex_lock(&key_mgmt_mutex, K_FOREVER);
-	err = key_fetch(sec_tag, cred_type);
+
+#ifdef CONFIG_MODEM_KEY_MGMT_USE_MALLOC
+	scratch_buf = k_malloc(BUF_SZ);
+
+	if (!scratch_buf) {
+		LOG_ERR("%s: scratch buf alloc error", __func__);
+		err = -ENOMEM;
+		goto end;
+	}
+#endif
+
+	err = key_fetch(sec_tag, cred_type, scratch_buf, BUF_SZ);
 	if (err) {
 		goto end;
 	}
@@ -188,6 +208,9 @@ int modem_key_mgmt_read(nrf_sec_tag_t sec_tag,
 	*len = end - begin;
 
 end:
+#ifdef CONFIG_MODEM_KEY_MGMT_USE_MALLOC
+	k_free(scratch_buf);
+#endif
 	k_mutex_unlock(&key_mgmt_mutex);
 	return err;
 }
@@ -205,7 +228,17 @@ int modem_key_mgmt_cmp(nrf_sec_tag_t sec_tag,
 
 	k_mutex_lock(&key_mgmt_mutex, K_FOREVER);
 
-	err = key_fetch(sec_tag, cred_type);
+#ifdef CONFIG_MODEM_KEY_MGMT_USE_MALLOC
+	scratch_buf = k_malloc(BUF_SZ);
+
+	if (!scratch_buf) {
+		LOG_ERR("%s: scratch buf alloc error", __func__);
+		err = -ENOMEM;
+		goto out;
+	}
+#endif
+
+	err = key_fetch(sec_tag, cred_type, scratch_buf, BUF_SZ);
 	if (err) {
 		goto out;
 	}
@@ -247,6 +280,9 @@ int modem_key_mgmt_cmp(nrf_sec_tag_t sec_tag,
 	}
 
 out:
+#ifdef CONFIG_MODEM_KEY_MGMT_USE_MALLOC
+	k_free(scratch_buf);
+#endif
 	k_mutex_unlock(&key_mgmt_mutex);
 
 	return err;
@@ -280,11 +316,24 @@ int modem_key_mgmt_clear(nrf_sec_tag_t sec_tag)
 	char *token;
 	uint32_t tag, type;
 
+	k_mutex_lock(&key_mgmt_mutex, K_FOREVER);
+
 	cmee_enable(&cmee_was_enabled);
 
-	err = nrf_modem_at_cmd(scratch_buf, sizeof(scratch_buf), "AT%%CMNG=1, %d", sec_tag);
+#ifdef CONFIG_MODEM_KEY_MGMT_USE_MALLOC
+	scratch_buf = k_malloc(BUF_SZ);
+
+	if (!scratch_buf) {
+		LOG_ERR("%s: scratch buf alloc error", __func__);
+		err = -ENOMEM;
+		goto out;
+	}
+#endif
+
+	err = nrf_modem_at_cmd(scratch_buf, BUF_SZ, "AT%%CMNG=1, %d", sec_tag);
 	if (err) {
-		return translate_error(err);
+		err = translate_error(err);
+		goto out;
 	}
 
 	token = strtok(scratch_buf, "\n");
@@ -302,10 +351,15 @@ int modem_key_mgmt_clear(nrf_sec_tag_t sec_tag)
 	}
 
 	if (err) {
-		return translate_error(err);
+		err = translate_error(err);
 	}
 
-	return 0;
+out:
+#ifdef CONFIG_MODEM_KEY_MGMT_USE_MALLOC
+	k_free(scratch_buf);
+#endif
+	k_mutex_unlock(&key_mgmt_mutex);
+	return err;
 }
 
 int modem_key_mgmt_exists(nrf_sec_tag_t sec_tag,
@@ -323,8 +377,18 @@ int modem_key_mgmt_exists(nrf_sec_tag_t sec_tag,
 
 	cmee_enable(&cmee_was_active);
 
+#ifdef CONFIG_MODEM_KEY_MGMT_USE_MALLOC
+	scratch_buf = k_malloc(BUF_SZ);
+
+	if (!scratch_buf) {
+		LOG_ERR("%s: scratch buf alloc error", __func__);
+		err = -ENOMEM;
+		goto out;
+	}
+#endif
+
 	scratch_buf[0] = '\0';
-	err = nrf_modem_at_cmd(scratch_buf, sizeof(scratch_buf),
+	err = nrf_modem_at_cmd(scratch_buf, BUF_SZ,
 			       "AT%%CMNG=1,%u,%d", sec_tag, cred_type);
 
 	if (!cmee_was_active) {
@@ -343,6 +407,9 @@ int modem_key_mgmt_exists(nrf_sec_tag_t sec_tag,
 	}
 
 out:
+#ifdef CONFIG_MODEM_KEY_MGMT_USE_MALLOC
+	k_free(scratch_buf);
+#endif
 	k_mutex_unlock(&key_mgmt_mutex);
 	return err;
 }
