@@ -10,6 +10,10 @@ config MODEM_KEY_MGMT
 
 if MODEM_KEY_MGMT
 
+config MODEM_KEY_MGMT_USE_MALLOC
+	bool "Use malloc for key buffer allocation"
+	default n
+
 module = MODEM_KEY_MGMT
 module-dep = LOG
 module-str = Modem key management
