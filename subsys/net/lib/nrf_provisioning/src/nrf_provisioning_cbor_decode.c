@@ -79,7 +79,7 @@ static bool decode_config(zcbor_state_t *state, struct config *result)
 	bool tmp_result =
 		(((((zcbor_uint32_expect(state, (1)))) &&
 		   ((zcbor_map_start_decode(state) &&
-		     ((zcbor_multi_decode(0, 100, &(*result).properties_tstrtstr_count,
+		     ((zcbor_multi_decode(0, DEFAULT_MAX_PROPS, &(*result).properties_tstrtstr_count,
 					  (zcbor_decoder_t *)decode_repeated_properties_tstrtstr,
 					  state, (&(*result).properties_tstrtstr),
 					  sizeof(struct properties_tstrtstr))) ||

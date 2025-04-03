@@ -28,6 +28,7 @@ extern "C" {
  *  See `zcbor --help` for more information about --default-max-qty
  */
 #define DEFAULT_MAX_QTY CONFIG_NRF_PROVISIONING_CBOR_RECORDS
+#define DEFAULT_MAX_PROPS CONFIG_NRF_PROVISIONING_CBOR_PROP_COUNT
 
 struct at_command {
 	struct zcbor_string at_command_set_command;
@@ -42,7 +43,7 @@ struct properties_tstrtstr {
 };
 
 struct config {
-	struct properties_tstrtstr properties_tstrtstr[100];
+	struct properties_tstrtstr properties_tstrtstr[DEFAULT_MAX_PROPS];
 	size_t properties_tstrtstr_count;
 };
 

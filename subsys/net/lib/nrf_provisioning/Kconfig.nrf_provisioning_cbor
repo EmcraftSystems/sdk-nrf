@@ -14,4 +14,8 @@ config NRF_PROVISIONING_CBOR_RECORDS
 	int "Maximum number of CBOR records that can be encoded or decoded at a time"
 	default 10
 
+config NRF_PROVISIONING_CBOR_PROP_COUNT
+	int "Maximum number of configuration properties that can be received"
+	default 100
+
 endif
