@@ -390,12 +390,16 @@ int nrf_provisioning_http_req(struct nrf_provisioning_http_context *const rest_c
 {
 	__ASSERT_NO_MSG(rest_ctx != NULL);
 
-	/* Only one provisioning ongoing at a time*/
-	static union {
-		char http[CONFIG_NRF_PROVISIONING_TX_BUF_SZ];
-		char at[CONFIG_NRF_PROVISIONING_CODEC_AT_CMD_LEN];
-	} tx_buf;
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	char *rx_buf, *tx_buf = NULL;
+	size_t tx_buf_sz = MAX(CONFIG_NRF_PROVISIONING_TX_BUF_SZ,
+			CONFIG_NRF_PROVISIONING_CODEC_AT_CMD_LEN);
+#else
+	static char tx_buf[MAX(CONFIG_NRF_PROVISIONING_TX_BUF_SZ,
+			CONFIG_NRF_PROVISIONING_CODEC_AT_CMD_LEN)];
+	size_t tx_buf_sz = sizeof(tx_buf);
 	static char rx_buf[CONFIG_NRF_PROVISIONING_RX_BUF_SZ];
+#endif
 
 	char *auth_hdr = NULL;
 	struct rest_client_req_context req;
@@ -404,8 +408,17 @@ int nrf_provisioning_http_req(struct nrf_provisioning_http_context *const rest_c
 	struct cdc_context cdc_ctx;
 	bool finished = false;
 
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	rx_buf = k_malloc(CONFIG_NRF_PROVISIONING_RX_BUF_SZ);
+	tx_buf = k_malloc(tx_buf_sz);
+	if (!rx_buf || !tx_buf) {
+		ret = -ENOMEM;
+		goto done;
+	}
+#endif
+
 	rest_ctx->rx_buf = rx_buf;
-	rest_ctx->rx_buf_len = sizeof(rx_buf);
+	rest_ctx->rx_buf_len = CONFIG_NRF_PROVISIONING_RX_BUF_SZ;
 	rest_ctx->keep_alive = false;
 
 	/* While there are commands to be processed */
@@ -474,13 +487,18 @@ int nrf_provisioning_http_req(struct nrf_provisioning_http_context *const rest_c
 			 * responses. This does break the layering of code but needs to be done
 			 * to achieve the memory savings.
 			 */
-			nrf_provisioning_codec_setup(&cdc_ctx, tx_buf.at, sizeof(tx_buf));
+
+			ret = nrf_provisioning_codec_setup(&cdc_ctx, tx_buf, tx_buf_sz);
+
+			if (ret < 0) {
+				break;
+			}
 
 			/* Codec input and output buffers */
 			cdc_ctx.ipkt = resp.response;
 			cdc_ctx.ipkt_sz = resp.response_len;
-			cdc_ctx.opkt = tx_buf.http;
-			cdc_ctx.opkt_sz = sizeof(tx_buf);
+			cdc_ctx.opkt = tx_buf;
+			cdc_ctx.opkt_sz = tx_buf_sz;
 
 			LOG_INF("Processing commands");
 			ret = nrf_provisioning_codec_process_commands();
@@ -518,6 +536,12 @@ int nrf_provisioning_http_req(struct nrf_provisioning_http_context *const rest_c
 		}
 		break;
 	}
+
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+done:
+	k_free(rx_buf);
+	k_free(tx_buf);
+#endif
 
 	nrf_provisioning_codec_teardown();
 

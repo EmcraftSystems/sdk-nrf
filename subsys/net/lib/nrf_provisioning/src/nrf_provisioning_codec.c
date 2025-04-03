@@ -53,10 +53,14 @@ static struct cdc_out_fmt_data {
 	bool errors;
 } o_fmt_data;
 
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+static struct cdc_in_fmt_data *i_fmt_data;
+#else
 static struct cdc_in_fmt_data {
 	/* Data */
 	struct commands cmds;
 } i_fmt_data;
+#endif
 
 static struct cdc_context *cctx;
 
@@ -87,7 +91,18 @@ int nrf_provisioning_codec_setup(struct cdc_context *const cdc_ctx,
 	o_fmt_data.at_buff = at_buff;
 	o_fmt_data.at_buff_sz = at_buff_sz;
 
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	i_fmt_data = k_malloc(sizeof(struct cdc_in_fmt_data));
+
+	if (i_fmt_data == NULL) {
+		LOG_ERR("provisioning buf alloc error");
+		return -ENOMEM;
+	}
+
+	cctx->i_data = (void *)i_fmt_data;
+#else
 	cctx->i_data = (void *)&i_fmt_data;
+#endif
 	cctx->o_data = (void *)&o_fmt_data;
 
 	return 0;
@@ -99,6 +114,10 @@ int nrf_provisioning_codec_teardown(void)
 		k_free(o_fmt_data.msgs[i]);
 		o_fmt_data.msgs[i] = NULL;
 	}
+
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	k_free(i_fmt_data);
+#endif
 
 	return 0;
 }

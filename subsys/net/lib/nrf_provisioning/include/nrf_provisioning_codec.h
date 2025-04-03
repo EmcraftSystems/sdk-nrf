@@ -11,6 +11,7 @@
 #include <modem/lte_lc.h>
 
 #include "nrf_provisioning_cbor_encode_types.h"
+#include "nrf_provisioning_cbor_decode_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +36,13 @@ struct cdc_context {
 	void *o_data; /* Raw responses */
 	size_t o_data_sz; /* Size of decoded commands */
 };
+
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+struct cdc_in_fmt_data {
+	/* Data */
+	struct commands cmds;
+};
+#endif
 
 /**
  *  @brief Initialize the codec used encoding the data to the cloud.
