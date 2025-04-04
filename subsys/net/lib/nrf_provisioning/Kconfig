@@ -85,6 +85,10 @@ config NRF_PROVISIONING_PRINT_ATTESTATION_TOKEN
 	  nRF Cloud. Display the attestation token
 	  needed for claiming the device.
 
+config NRF_PROVISIONING_USE_MALLOC
+	bool "Use dynamic memory allocation for large structures"
+	default n
+
 rsource "Kconfig.nrf_provisioning_http"
 
 rsource "Kconfig.nrf_provisioning_coap"
