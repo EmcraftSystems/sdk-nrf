@@ -41,6 +41,8 @@ manifest:
       url-base: https://github.com/boschsensortec
     - name: eembc
       url-base: https://github.com/eembc
+    - name: onomondo
+      url-base: https://github.com/onomondo
 
   # If not otherwise specified, the projects below should be obtained
   # from the ncs remote.
@@ -295,6 +297,11 @@ manifest:
       revision: d5fad6bd094899101a4e5fd53af7298160ced6ab
       groups:
         - benchmark
+    - name: nrf-softsim
+      repo-path: nrf-softsim
+      remote: onomondo
+      path: modules/lib/onomondo-softsim
+      revision: v5.0.0
 
   # West-related configuration for the nrf repository.
   self:
