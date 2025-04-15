@@ -135,6 +135,14 @@ config NRF_CLOUD_FOTA_SMP
 	help
 	  Enables FOTA updates to an auxiliary MCU using SMP.
 
+config NRF_CLOUD_FOTA_SMP_CONVERT_VERSION
+	bool "Convert the version string of the SMP device to a custom format"
+	default n
+	depends on NRF_CLOUD_FOTA_SMP
+	help
+	  Calls the custom nrf_cloud_fota_smp_version_convert() function
+	  to re-format the version string of the SMP device.
+
 config NRF_CLOUD_FOTA_TRANSPORT_ENABLED
 	bool
 	default y if (NRF_CLOUD_REST || NRF_CLOUD_COAP || NRF_CLOUD_FOTA)

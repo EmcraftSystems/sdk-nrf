@@ -1183,6 +1183,17 @@ int nrf_cloud_fota_smp_version_read(void);
  */
 int nrf_cloud_fota_smp_version_get(char **smp_ver_out);
 
+#if defined(CONFIG_NRF_CLOUD_FOTA_SMP_CONVERT_VERSION)
+/**
+ * @brief Convert the version string of the SMP device to a custom format.
+ *
+ * @retval 0        Success.
+ * @retval -ENOBUFS Error; internal buffer is too small to hold version string.
+ * @return A negative value indicates an error.
+ */
+int nrf_cloud_fota_smp_version_convert(char **smp_ver_out);
+#endif
+
 /**
  * @brief Check if credentials exist in the configured location.
  *
