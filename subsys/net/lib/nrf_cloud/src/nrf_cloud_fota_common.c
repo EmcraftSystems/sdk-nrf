@@ -575,6 +575,9 @@ int nrf_cloud_fota_smp_version_get(char **smp_ver_out)
 	}
 
 	*smp_ver_out = smp_ver;
+#if defined(CONFIG_NRF_CLOUD_FOTA_SMP_CONVERT_VERSION)
+	nrf_cloud_fota_smp_version_convert(smp_ver_out);
+#endif
 
 	return 0;
 #endif
