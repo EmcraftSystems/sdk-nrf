@@ -382,11 +382,37 @@ static enum nrf_cloud_fota_validate_status modem_full_fota_validate_get(void)
 
 static enum nrf_cloud_fota_validate_status smp_fota_validate_get(void)
 {
+	enum nrf_cloud_fota_validate_status validate = NRF_CLOUD_FOTA_VALIDATE_UNKNOWN;
 #if defined(CONFIG_NRF_CLOUD_FOTA_SMP)
-	/* TODO: validate the new firmware */
-	return NRF_CLOUD_FOTA_VALIDATE_PASS;
+	int err;
+
+	/*
+	 * The smp_ver array should have been initialized earlier
+	 * by nrf_cloud_fota_smp_client_init(). Othervise,
+	 * reading the image version from the SMP device has failed,
+	 * and the SMP FOTA update should not be confirmed.
+	 */
+	if (smp_ver[0]) {
+		err = mcumgr_smp_client_confirm_image();
+		if (err) {
+			LOG_ERR("SMP FOTA update confirmation failed: %d", err);
+		}
+	} else {
+		err = -EIO;
+		LOG_ERR("Reading image version from the SMP device failed");
+	}
+
+	if (err) {
+		/* If this fails then MCUBOOT will revert
+		 * to the previous image on reboot
+		 */
+		validate = NRF_CLOUD_FOTA_VALIDATE_FAIL;
+		LOG_INF("Previous version will be restored on the SMP device on next boot");
+	} else {
+		validate = NRF_CLOUD_FOTA_VALIDATE_PASS;
+	}
 #endif
-	return NRF_CLOUD_FOTA_VALIDATE_UNKNOWN;
+	return validate;
 }
 
 int nrf_cloud_fota_smp_install(void)
@@ -499,6 +525,10 @@ int nrf_cloud_pending_fota_job_process(struct nrf_cloud_settings_fota_job * cons
 		job->validate = boot_fota_validate_get(job->bl_flags);
 	} else if (job->type == NRF_CLOUD_FOTA_SMP) {
 		job->validate = smp_fota_validate_get();
+
+		if (job->validate == NRF_CLOUD_FOTA_VALIDATE_FAIL) {
+			*reboot_required = true;
+		}
 	} else {
 		LOG_ERR("Unknown FOTA job type: %d", job->type);
 		return -ENOENT;
