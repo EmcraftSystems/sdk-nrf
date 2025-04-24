@@ -32,6 +32,9 @@
 #include <modem/nrf_modem_lib.h>
 #include <nrf_modem.h>
 #endif
+#ifdef CONFIG_DFU_TARGET_SMP
+#include <dfu/dfu_target_smp.h>
+#endif
 
 LOG_MODULE_REGISTER(nrf_cloud_fota, CONFIG_NRF_CLOUD_FOTA_LOG_LEVEL);
 
@@ -211,6 +214,10 @@ static void fota_reboot(void)
 {
 	LOG_INF("Rebooting to complete FOTA update...");
 	LOG_PANIC();
+#ifdef CONFIG_DFU_TARGET_SMP
+	/* Request to reboot the SMP target */
+	dfu_target_smp_reboot();
+#endif
 	sys_reboot(SYS_REBOOT_COLD);
 }
 
