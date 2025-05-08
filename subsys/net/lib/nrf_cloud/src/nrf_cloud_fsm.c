@@ -765,9 +765,6 @@ static int dc_rx_data_handler(const struct nct_evt *nct_evt)
 		}
 		cloud_evt.type = NRF_CLOUD_EVT_RX_DATA_LOCATION;
 		break;
-	case NRF_CLOUD_RCV_TOPIC_POST_ORDER:
-		cloud_evt.type = NRF_CLOUD_EVT_RX_POST_ORDER;
-		break;
 	case NRF_CLOUD_RCV_TOPIC_UNKNOWN:
 		LOG_DBG("Received data on unknown topic: %s",
 			(char *)(cloud_evt.topic.ptr ? cloud_evt.topic.ptr : "NULL"));
