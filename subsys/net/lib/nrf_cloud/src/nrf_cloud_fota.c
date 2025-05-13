@@ -596,6 +596,11 @@ bool nrf_cloud_fota_is_available(void)
 	return current_fota.info.type != NRF_CLOUD_FOTA_TYPE__INVALID;
 }
 
+bool __weak nrf_cloud_fota_is_enabled(void)
+{
+	return true;
+}
+
 static int save_validate_status(const char *const job_id,
 			   const enum nrf_cloud_fota_type job_type,
 			   const enum nrf_cloud_fota_validate_status validate)
@@ -1119,11 +1124,16 @@ static int handle_mqtt_evt_publish(const struct mqtt_evt *evt)
 	if (nrf_cloud_fota_job_decode(job_info, ble_id, &input)) {
 		/* Error parsing job, if a job ID exists, reject the job */
 		reject_job = (job_info->id != NULL);
+		current_fota.error = NRF_CLOUD_FOTA_ERROR_BAD_JOB_INFO;
 	} else if (is_last_job(job_info->id)) {
 		/* Job parsed and already processed */
 		skip = true;
 		LOG_INF("Job %s already completed... skipping", last_job);
 		nrf_cloud_fota_job_free(job_info);
+	} else if (!nrf_cloud_fota_is_enabled()) {
+		reject_job = true;
+		current_fota.error = NRF_CLOUD_FOTA_ERROR_APPLY_FAIL;
+		LOG_INF("Rejecting job %s during active trip", job_info->id);
 	} else {
 		LOG_DBG("Job ID: %s, type: %d, size: %d",
 			job_info->id,
@@ -1161,9 +1171,9 @@ send_ack:
 		cleanup_ble_job(&ble_job);
 #endif
 	} else if (reject_job) {
-		current_fota.error = NRF_CLOUD_FOTA_ERROR_BAD_JOB_INFO;
 		current_fota.status = NRF_CLOUD_FOTA_REJECTED;
 		(void)publish_job_status(&current_fota);
+		update_last_job(job_info->id);
 		cleanup_job(&current_fota);
 	}
 
