@@ -186,6 +186,12 @@ bool nrf_cloud_fota_is_active(void);
 /** @brief Check if the device has received FOTA job info. */
 bool nrf_cloud_fota_is_available(void);
 
+/** @brief Check if the FOTA is currently enabled.
+ * The default implementation of this function is "always enabled".
+ * It is annotated as weak and can be overridden by the application.
+ */
+bool nrf_cloud_fota_is_enabled(void);
+
 /**
  * @brief Set callback for BLE FOTA.
  *
