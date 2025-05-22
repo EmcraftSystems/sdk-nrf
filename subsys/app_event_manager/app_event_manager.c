@@ -116,20 +116,28 @@ static void log_event_init(void)
 
 void * __weak app_event_manager_alloc(size_t size)
 {
-	void *event = k_malloc(size);
+	int retries = 3;
 
-	if (unlikely(!event)) {
-		LOG_ERR("Application Event Manager OOM error\n");
-		__ASSERT_NO_MSG(false);
-		if (IS_ENABLED(CONFIG_APP_EVENT_MANAGER_REBOOT_ON_EVENT_ALLOC_FAIL)) {
-			sys_reboot(SYS_REBOOT_WARM);
-		} else {
-			k_panic();
+	/**
+	 * Attempt to allocate the event up to 3 times, with a 50ms delay between attempts.
+	 */
+	while (retries--) {
+		void *event = k_malloc(size);
+		if (event) {
+			return event;
 		}
-		return NULL;
+		k_sleep(K_MSEC(50));
+	}
+	
+ 	LOG_ERR("Application Event Manager OOM error\n");
+	__ASSERT_NO_MSG(false);
+	if (IS_ENABLED(CONFIG_APP_EVENT_MANAGER_REBOOT_ON_EVENT_ALLOC_FAIL)) {
+		sys_reboot(SYS_REBOOT_WARM);
+	} else {
+		k_panic();
 	}
 
-	return event;
+	return NULL;
 }
 
 void __weak app_event_manager_free(void *addr)
