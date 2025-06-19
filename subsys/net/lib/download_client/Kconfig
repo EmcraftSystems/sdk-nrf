@@ -28,6 +28,13 @@ config DOWNLOAD_CLIENT_HTTP_FRAG_SIZE
 	default 2048 if DOWNLOAD_CLIENT_HTTP_FRAG_SIZE_2048
 	default 4096 if DOWNLOAD_CLIENT_HTTP_FRAG_SIZE_4096
 
+config DOWNLOAD_CLIENT_REPORT_INTERVAL
+	int "Download progress report interval in percents"
+	default 1
+	help
+	  Defines the download progress report interval in percents. Allowable
+	  values are 1-100 %. The progress is reported via Zephyr log subsystem.
+
 choice
 	prompt "HTTP(S) fragment size"
 	default DOWNLOAD_CLIENT_HTTP_FRAG_SIZE_2048

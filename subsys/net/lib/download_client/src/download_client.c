@@ -30,6 +30,7 @@ LOG_MODULE_REGISTER(download_client, CONFIG_DOWNLOAD_CLIENT_LOG_LEVEL);
 #define SIN(A) ((struct sockaddr_in *)(A))
 
 #define HOSTNAME_SIZE CONFIG_DOWNLOAD_CLIENT_MAX_HOSTNAME_SIZE
+#define PROGRESS_REPORT_INTERVAL CONFIG_DOWNLOAD_CLIENT_REPORT_INTERVAL
 
 static int handle_disconnect(struct download_client *client);
 static int error_evt_send(const struct download_client *dl, int error);
@@ -719,8 +720,18 @@ static int handle_received(struct download_client *dl, ssize_t len)
 	}
 
 	if (dl->file_size) {
-		LOG_INF("Downloaded %u/%u bytes (%d%%)", dl->progress, dl->file_size,
-			(dl->progress * 100) / dl->file_size);
+		static int progress;
+		int cur_progress = (dl->progress * 100) / dl->file_size;
+		if (((cur_progress - progress) >= PROGRESS_REPORT_INTERVAL) ||
+				cur_progress == 100) {
+			progress = cur_progress;
+			LOG_INF("Downloaded %u/%u bytes (%d%%)", dl->progress,
+					dl->file_size, progress);
+		}
+		if (cur_progress == 100) {
+			/* reset for next download */
+			progress = 0;
+		}
 	} else {
 		LOG_INF("Downloaded %u bytes", dl->progress);
 	}
