@@ -264,10 +264,12 @@ static int host_lookup(const char *host, int family, uint8_t pdn_id,
 	return 0;
 }
 
+#define CONNECT_RETRY_CNT 3
 static int client_socket_connect(struct download_client *dl, int type, uint16_t port)
 {
 	int err;
 	socklen_t addrlen;
+	int retry_cnt = CONNECT_RETRY_CNT;
 
 	switch (dl->remote_addr.sa_family) {
 	case AF_INET6:
@@ -344,7 +346,14 @@ static int client_socket_connect(struct download_client *dl, int type, uint16_t 
 	LOG_DBG("fd %d, addrlen %d, fam %s, port %d",
 		dl->fd, addrlen, str_family(dl->remote_addr.sa_family), port);
 
-	err = connect(dl->fd, &dl->remote_addr, addrlen);
+	while (retry_cnt--) {
+		err = connect(dl->fd, &dl->remote_addr, addrlen);
+		if (!err || !retry_cnt) {
+			break;
+		}
+		k_msleep(500);
+	}
+
 	if (err) {
 		err = -errno;
 		LOG_ERR("Unable to connect, errno %d", -err);
