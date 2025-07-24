@@ -65,7 +65,7 @@ class TerminalNotebook(object):
                 self.device_string_dict[device] += text
 
     def receive_data_from_device(self, device, string):
-        self.device_terminal_dict[device].feed(string)
+        self.device_terminal_dict[device].feed(string.encode())
 
     def get_data_from_terminal(self):
         return self.device_string_dict
