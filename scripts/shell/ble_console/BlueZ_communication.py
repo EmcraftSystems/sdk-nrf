@@ -5,6 +5,7 @@ import dbus
 import dbus.service
 import sys
 import subprocess
+import re
 
 from xml.etree import ElementTree
 from dbus.mainloop.glib import DBusGMainLoop
@@ -47,11 +48,12 @@ class BluetoothConnection(object):
         (self.bluez_maj, self.bluez_min) = self.get_bluez_version()
 
     def get_bluez_version(self):
-	bashCommand = 'bluetoothd -v'
-        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+        bashCommand = 'bluetoothctl -v'
+        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE, encoding='utf8')
         output, error = process.communicate()
-	output = output.split('.')
-	return (int(output[0],10), int(output[1],10))
+        str_ver = re.split(r'[:.]', output)
+        print(str_ver, output)
+        return (int(str_ver[1],10), int(str_ver[2],10))
 
     def get_device_name(self, device):
         for dev in self.device_list:
@@ -156,15 +158,15 @@ class BluetoothConnection(object):
     def write_bluetooth(self, device, text):
         message = bytearray()
         if '\r' in text:
-            message.extend(text + '\r\n')
+            message.extend((text + '\r\n').encode())
         else:
-            message.extend(text)
+            message.extend(text.encode())
         for dev in self.device_list:
             if device in dev.path:
                 try:
                     if (self.bluez_maj > 5 or (self.bluez_maj == 5
 			and self.bluez_min > 39)):
-			dev.rx_interface.WriteValue(message, {})
+                        dev.rx_interface.WriteValue(message, {})
                     else:
                         dev.rx_interface.WriteValue(message)
                 except dbus.DBusException as e:
@@ -173,7 +175,7 @@ class BluetoothConnection(object):
                     elif "Did not receive a reply" in e.args[0]:
                         self.display_message("Timeout exceeded :" + device)
                     else:
-                        print e.args
+                        print (e.args)
 
     def enable_notification(self, device):
         try:
