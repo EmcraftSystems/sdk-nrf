@@ -38,6 +38,12 @@ STATIC struct ctx {
 	/* Linked list used to keep track of pending messages. */
 	sys_slist_t pending_list;
 
+	/* Amount of pending messages in the list */
+	uint32_t list_used;
+
+	/* Ready to add new messages */
+	bool ready;
+
 	/* Variable used to prevent multiple library initializations. */
 	bool initialized;
 
@@ -117,6 +123,8 @@ exit:
  */
 static int list_append(struct qos_data *message)
 {
+	struct qos_evt evt;
+
 	/* Mark the initial list index as invalid. */
 	int index_next = -1;
 
@@ -137,22 +145,35 @@ static int list_append(struct qos_data *message)
 	ctx.list_internal[index_next].message = *message;
 
 	sys_slist_append(&ctx.pending_list, &ctx.list_internal[index_next].header);
+	ctx.list_used++;
+	if (ctx.ready && ctx.list_used * 100 >=
+	    CONFIG_QOS_PENDING_MESSAGES_MAX * CONFIG_QOS_NOT_READY_THRESHOLD_PCT) {
+		ctx.ready = false;
+		evt.type = QOS_EVT_NOT_READY;
+		notify_event(&evt);
+	}
 	return index_next;
 }
 
 static int list_remove(uint32_t id)
 {
 	struct qos_metadata *node = NULL, *next_node = NULL, *node_prev = NULL;
-	struct qos_evt evt = {
-		.type = QOS_EVT_MESSAGE_REMOVED_FROM_LIST,
-	};
+	struct qos_evt evt;
 
 	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&ctx.pending_list, node, next_node, header) {
 		if (node->message.id == id) {
+			evt.type = QOS_EVT_MESSAGE_REMOVED_FROM_LIST;
 			evt.message = node->message;
 			notify_event(&evt);
 			memset(&node->message, 0, sizeof(struct qos_data));
 			sys_slist_remove(&ctx.pending_list, &node_prev->header, &node->header);
+			ctx.list_used--;
+			if (!ctx.ready && ctx.list_used * 100 <=
+			    CONFIG_QOS_PENDING_MESSAGES_MAX * CONFIG_QOS_READY_THRESHOLD_PCT) {
+				ctx.ready = true;
+				evt.type = QOS_EVT_READY;
+				notify_event(&evt);
+			}
 			return 0;
 		}
 
@@ -189,6 +210,8 @@ int qos_init(qos_evt_handler_t evt_handler)
 	sys_slist_init(&ctx.pending_list);
 	k_work_init_delayable(&ctx.timeout_handler_work, timeout_handler_work_fn);
 
+	ctx.list_used = 0;
+	ctx.ready = true;
 exit:
 	k_mutex_unlock(&ctx_lock);
 	return err;
