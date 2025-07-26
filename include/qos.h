@@ -73,6 +73,14 @@ enum qos_evt_type {
 	 *  Payload is of type @ref qos_data.
 	 */
 	QOS_EVT_MESSAGE_REMOVED_FROM_LIST,
+
+	/** Not ready to add new messages
+	 */
+	QOS_EVT_NOT_READY,
+
+	/** Ready to add new messages
+	 */
+	QOS_EVT_READY,
 };
 
 /** @brief Structure used to keep track of unACKed messages. */

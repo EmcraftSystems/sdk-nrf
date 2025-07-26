@@ -13,6 +13,22 @@ config QOS_PENDING_MESSAGES_MAX
 	int "Maximum amount of pending messages"
 	default 10
 
+config QOS_NOT_READY_THRESHOLD_PCT
+	int "QoS not ready threshold (in percent)"
+	default 50
+	help
+	  The "not ready" event is sent if
+	  the current amount of pending messages
+	  is above the specified threshold.
+
+config QOS_READY_THRESHOLD_PCT
+	int "QoS ready threshold (in percent)"
+	default 0
+	help
+	  The "ready" event is sent when
+	  the current amount of pending messages
+	  is below the specified threshold.
+
 config QOS_MESSAGE_NOTIFIED_COUNT_MAX
 	int "Maximum number of times to notify a message"
 	default 3
