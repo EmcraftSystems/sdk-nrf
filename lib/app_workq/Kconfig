@@ -1,0 +1,16 @@
+#
+# Copyright (c) 2025 Emcraft Systems
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+config APP_WORK_QUEUE
+	bool "Generic work queue with low priority"
+	help
+	  Enable generic application work queue
+
+config APP_WORK_QUEUE_STACK_SIZE
+	int "App work queue stack size"
+	default 3072
+	help
+	  Stack size for the application work queue

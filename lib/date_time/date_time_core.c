@@ -22,6 +22,10 @@
 #include <zephyr/posix/time.h>
 #endif
 
+#ifdef CONFIG_APP_WORK_QUEUE
+#include <app_workq.h>
+#endif
+
 LOG_MODULE_DECLARE(date_time, CONFIG_DATE_TIME_LOG_LEVEL);
 
 BUILD_ASSERT(CONFIG_DATE_TIME_TOO_OLD_SECONDS <= CONFIG_DATE_TIME_UPDATE_INTERVAL_SECONDS);
@@ -29,7 +33,18 @@ BUILD_ASSERT(CONFIG_DATE_TIME_TOO_OLD_SECONDS <= CONFIG_DATE_TIME_UPDATE_INTERVA
 #define DATE_TIME_EVT_TYPE_PREVIOUS 0xFF
 
 K_THREAD_STACK_DEFINE(date_time_stack, CONFIG_DATE_TIME_THREAD_STACK_SIZE);
-struct k_work_q date_time_work_q;
+#ifndef CONFIG_APP_WORK_QUEUE
+static struct k_work_q date_time_work_q;
+#endif
+
+struct k_work_q *date_time_work_q_get(void)
+{
+#if defined(CONFIG_APP_WORK_QUEUE)
+	return app_workq_get();
+#else
+	return &date_time_work_q;
+#endif
+}
 
 static void date_time_update_work_fn(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(date_time_update_work, date_time_update_work_fn);
@@ -80,7 +95,8 @@ static int date_time_core_schedule_work(int interval)
 		return -EAGAIN;
 	}
 
-	k_work_reschedule_for_queue(&date_time_work_q, &date_time_update_work, K_SECONDS(interval));
+	k_work_reschedule_for_queue(date_time_work_q_get(), &date_time_update_work,
+			K_SECONDS(interval));
 
 	return 0;
 }
@@ -180,7 +196,7 @@ void date_time_lte_ind_handler(const struct lte_lc_evt *const evt)
 				LOG_DBG("Date time update scheduled in 1 second "
 					"due to LTE registration");
 				k_work_reschedule_for_queue(
-					&date_time_work_q,
+					date_time_work_q_get(),
 					&date_time_update_work,
 					K_SECONDS(1));
 			}
@@ -197,6 +213,7 @@ void date_time_lte_ind_handler(const struct lte_lc_evt *const evt)
 
 void date_time_core_init(void)
 {
+#ifndef CONFIG_APP_WORK_QUEUE
 	struct k_work_queue_config cfg = {
 		.name = "date_time_work_q",
 	};
@@ -207,6 +224,7 @@ void date_time_core_init(void)
 		CONFIG_DATE_TIME_THREAD_STACK_SIZE,
 		K_LOWEST_APPLICATION_THREAD_PRIO,
 		&cfg);
+#endif
 
 	if (IS_ENABLED(CONFIG_DATE_TIME_AUTO_UPDATE) && IS_ENABLED(CONFIG_LTE_LINK_CONTROL)) {
 		lte_lc_register_handler(date_time_lte_ind_handler);
@@ -260,7 +278,7 @@ int date_time_core_update_async(date_time_evt_handler_t evt_handler)
 	}
 
 	/* Cannot reschedule date_time_update_work because it would mess up normal update cycle */
-	k_work_submit_to_queue(&date_time_work_q, &date_time_update_manual_work);
+	k_work_submit_to_queue(date_time_work_q_get(), &date_time_update_manual_work);
 
 	return 0;
 }

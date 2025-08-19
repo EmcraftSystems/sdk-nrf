@@ -20,8 +20,6 @@
 
 LOG_MODULE_DECLARE(date_time, CONFIG_DATE_TIME_LOG_LEVEL);
 
-extern struct k_work_q date_time_work_q;
-
 #define MODEM_CFUN_NORMAL 1
 #define MODEM_CFUN_ACTIVATE_LTE 21
 
@@ -253,7 +251,7 @@ static void date_time_modem_on_cfun(int mode, void *ctx)
 	ARG_UNUSED(ctx);
 
 	if (mode == MODEM_CFUN_NORMAL || mode == MODEM_CFUN_ACTIVATE_LTE) {
-		k_work_submit_to_queue(&date_time_work_q, &date_time_modem_xtime_subscribe_work);
+		k_work_submit_to_queue(date_time_work_q_get(), &date_time_modem_xtime_subscribe_work);
 	}
 }
 
