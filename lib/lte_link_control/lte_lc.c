@@ -231,6 +231,7 @@ int lte_lc_factory_reset(enum lte_lc_factory_reset_type type)
 	return xfactoryreset_reset(type);
 }
 
+#ifndef CONFIG_APP_WORK_QUEUE
 static int lte_lc_sys_init(void)
 {
 	work_q_start();
@@ -239,3 +240,4 @@ static int lte_lc_sys_init(void)
 }
 
 SYS_INIT(lte_lc_sys_init, APPLICATION, 0);
+#endif

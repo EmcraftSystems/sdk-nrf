@@ -7,6 +7,8 @@
 #ifndef DATE_TIME_CORE_H_
 #define DATE_TIME_CORE_H_
 
+#include <zephyr/kernel.h>
+
 #define DATE_TIME_TZ_INVALID 99
 
 void date_time_core_init(void);
@@ -21,5 +23,7 @@ void date_time_core_clear(void);
 void date_time_core_store(int64_t curr_time_ms, enum date_time_evt_type time_source);
 void date_time_core_store_tz(int64_t curr_time_ms, enum date_time_evt_type time_source, int tz);
 int date_time_core_current_check(void);
+
+struct k_work_q *date_time_work_q_get(void);
 
 #endif /* DATE_TIME_CORE_H_ */
