@@ -160,7 +160,7 @@ struct download_client {
 	struct sockaddr remote_addr;
 
 	/** Response buffer. */
-	char buf[CONFIG_DOWNLOAD_CLIENT_BUF_SIZE];
+	char *buf;
 	/** Buffer offset. */
 	size_t offset;
 
