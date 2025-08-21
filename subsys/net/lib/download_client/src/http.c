@@ -128,7 +128,7 @@ static int http_header_parse(struct download_client *client, size_t *hdr_len)
 
 	const unsigned int expected_status = (client->http.ranged || client->progress) ? 206 : 200;
 
-	p = strnstr(client->buf, "\r\n\r\n", sizeof(client->buf));
+	p = strnstr(client->buf, "\r\n\r\n", CONFIG_DOWNLOAD_CLIENT_BUF_SIZE);
 	if (!p || p > client->buf + client->offset) {
 		/* Waiting full HTTP header */
 		LOG_DBG("Waiting full header in response");

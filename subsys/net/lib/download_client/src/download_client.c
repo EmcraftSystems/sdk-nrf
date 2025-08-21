@@ -595,7 +595,7 @@ static ssize_t socket_recv(struct download_client *dl)
 		return -1;
 	}
 
-	return recv(dl->fd, dl->buf + dl->offset, sizeof(dl->buf) - dl->offset, 0);
+	return recv(dl->fd, dl->buf + dl->offset, CONFIG_DOWNLOAD_CLIENT_BUF_SIZE - dl->offset, 0);
 }
 
 static int request_resend(struct download_client *dl)
@@ -703,7 +703,7 @@ static int handle_received(struct download_client *dl, ssize_t len)
 	if (dl->proto == IPPROTO_TCP || dl->proto == IPPROTO_TLS_1_2) {
 		rc = http_parse(dl, len);
 		if (rc > 0 &&
-		    (!dl->http.has_header || dl->offset < sizeof(dl->buf))) {
+		    (!dl->http.has_header || dl->offset < CONFIG_DOWNLOAD_CLIENT_BUF_SIZE)) {
 			/* Wait for more data (full buffer).
 			 * Forward only full buffers to callback.
 			 */
@@ -824,6 +824,12 @@ void download_thread(void *client, void *a, void *b)
 		/* Wait for action */
 		k_sem_take(&dl->wait_for_download, K_FOREVER);
 
+		dl->buf = k_malloc(CONFIG_DOWNLOAD_CLIENT_BUF_SIZE);
+		if (dl->buf == NULL) {
+			LOG_ERR("alloc error");
+			return;
+		}
+
 		/* Connect to the target host */
 		if (is_connecting(dl)) {
 			rc = client_connect(dl);
@@ -868,17 +874,18 @@ void download_thread(void *client, void *a, void *b)
 				}
 			}
 
-			__ASSERT(dl->offset < sizeof(dl->buf), "Buffer overflow");
+			__ASSERT(dl->offset < CONFIG_DOWNLOAD_CLIENT_BUF_SIZE, "Buffer overflow");
 
-			if (sizeof(dl->buf) - dl->offset == 0) {
+			if (CONFIG_DOWNLOAD_CLIENT_BUF_SIZE == dl->offset) {
 				LOG_ERR("Could not fit HTTP header from server (> %d)",
-					sizeof(dl->buf));
+					CONFIG_DOWNLOAD_CLIENT_BUF_SIZE);
 				error_evt_send(dl, E2BIG);
 				break;
 			}
 
-			LOG_DBG("Receiving up to %d bytes at %p...", (sizeof(dl->buf) - dl->offset),
-				(void *)(dl->buf + dl->offset));
+			LOG_DBG("Receiving up to %d bytes at %p...",
+					(CONFIG_DOWNLOAD_CLIENT_BUF_SIZE - dl->offset),
+					(void *)(dl->buf + dl->offset));
 
 			len = socket_recv(dl);
 
@@ -914,6 +921,8 @@ void download_thread(void *client, void *a, void *b)
 			handle_disconnect(dl);
 			LOG_DBG("Connection closed");
 		}
+
+		k_free(dl->buf);
 
 		/* Do not let the thread return, since it can't be restarted */
 	}
