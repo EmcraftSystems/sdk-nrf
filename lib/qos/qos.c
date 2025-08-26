@@ -38,9 +38,6 @@ STATIC struct ctx {
 	/* Linked list used to keep track of pending messages. */
 	sys_slist_t pending_list;
 
-	/* Amount of pending messages in the list */
-	uint32_t list_used;
-
 	/* Ready to add new messages */
 	bool ready;
 
@@ -70,6 +67,24 @@ static void notify_event(struct qos_evt *evt)
 	}
 }
 
+static void check_ready(bool node_appended)
+{
+	struct qos_evt evt;
+
+	if (node_appended && ctx.ready &&
+	    sys_slist_len(&ctx.pending_list) * 100 >=
+	    CONFIG_QOS_PENDING_MESSAGES_MAX * CONFIG_QOS_NOT_READY_THRESHOLD_PCT) {
+		ctx.ready = false;
+		evt.type = QOS_EVT_NOT_READY;
+		notify_event(&evt);
+	} else if (!node_appended && !ctx.ready &&
+	    sys_slist_is_empty(&ctx.pending_list)) {
+		ctx.ready = true;
+		evt.type = QOS_EVT_READY;
+		notify_event(&evt);
+	}
+}
+
 STATIC void timeout_handler_work_fn(struct k_work *work)
 {
 	struct qos_metadata *node = NULL, *next_node = NULL;
@@ -92,6 +107,7 @@ STATIC void timeout_handler_work_fn(struct k_work *work)
 			sys_slist_find_and_remove(&ctx.pending_list, &node->header);
 		}
 	};
+	check_ready(false);
 
 	/* Don't shedule a new work if the pending list is empty. */
 	if (sys_slist_is_empty(&ctx.pending_list)) {
@@ -123,8 +139,6 @@ exit:
  */
 static int list_append(struct qos_data *message)
 {
-	struct qos_evt evt;
-
 	/* Mark the initial list index as invalid. */
 	int index_next = -1;
 
@@ -145,35 +159,25 @@ static int list_append(struct qos_data *message)
 	ctx.list_internal[index_next].message = *message;
 
 	sys_slist_append(&ctx.pending_list, &ctx.list_internal[index_next].header);
-	ctx.list_used++;
-	if (ctx.ready && ctx.list_used * 100 >=
-	    CONFIG_QOS_PENDING_MESSAGES_MAX * CONFIG_QOS_NOT_READY_THRESHOLD_PCT) {
-		ctx.ready = false;
-		evt.type = QOS_EVT_NOT_READY;
-		notify_event(&evt);
-	}
+	check_ready(true);
+
 	return index_next;
 }
 
 static int list_remove(uint32_t id)
 {
 	struct qos_metadata *node = NULL, *next_node = NULL, *node_prev = NULL;
-	struct qos_evt evt;
+	struct qos_evt evt = {
+		.type = QOS_EVT_MESSAGE_REMOVED_FROM_LIST,
+	};
 
 	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&ctx.pending_list, node, next_node, header) {
 		if (node->message.id == id) {
-			evt.type = QOS_EVT_MESSAGE_REMOVED_FROM_LIST;
 			evt.message = node->message;
 			notify_event(&evt);
 			memset(&node->message, 0, sizeof(struct qos_data));
 			sys_slist_remove(&ctx.pending_list, &node_prev->header, &node->header);
-			ctx.list_used--;
-			if (!ctx.ready && ctx.list_used * 100 <=
-			    CONFIG_QOS_PENDING_MESSAGES_MAX * CONFIG_QOS_READY_THRESHOLD_PCT) {
-				ctx.ready = true;
-				evt.type = QOS_EVT_READY;
-				notify_event(&evt);
-			}
+			check_ready(false);
 			return 0;
 		}
 
@@ -202,6 +206,7 @@ int qos_init(qos_evt_handler_t evt_handler)
 	}
 
 	ctx.initialized = true;
+	ctx.ready = true;
 
 	LOG_DBG("Registering handler %p", evt_handler);
 	ctx.app_evt_handler = evt_handler;
@@ -210,8 +215,6 @@ int qos_init(qos_evt_handler_t evt_handler)
 	sys_slist_init(&ctx.pending_list);
 	k_work_init_delayable(&ctx.timeout_handler_work, timeout_handler_work_fn);
 
-	ctx.list_used = 0;
-	ctx.ready = true;
 exit:
 	k_mutex_unlock(&ctx_lock);
 	return err;
@@ -363,6 +366,7 @@ void qos_message_remove_all(void)
 		memset(&node->message, 0, sizeof(struct qos_data));
 		sys_slist_remove(&ctx.pending_list, NULL, &node->header);
 	};
+	check_ready(false);
 
 	k_mutex_unlock(&ctx_lock);
 
