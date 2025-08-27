@@ -1,0 +1,7 @@
+config PRINT_RESET_REASON
+        bool "Enable print/clear reset reason"
+        default n
+
+menu "Zephyr Kernel"
+source "Kconfig.zephyr"
+endmenu

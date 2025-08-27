@@ -14,6 +14,8 @@
 #include <bl_boot.h>
 #include <bl_validation.h>
 #include <nrfx_nvmc.h>
+#include <helpers/nrfx_reset_reason.h>
+
 
 #if defined(CONFIG_HW_UNIQUE_KEY_LOAD)
 #include <zephyr/init.h>
@@ -49,6 +51,15 @@ int load_huk(void)
 SYS_INIT(load_huk, PRE_KERNEL_2, 0);
 #endif
 
+static void print_and_clear_reset_reason(void)
+{
+#if defined(CONFIG_PRINT_RESET_REASON)
+	uint32_t reset_reason;
+	reset_reason = nrfx_reset_reason_get();
+	nrfx_reset_reason_clear(reset_reason);
+	printk("Reset reason: 0x%x\n", reset_reason);
+#endif
+}
 
 static void validate_and_boot(const struct fw_info *fw_info, uint16_t slot)
 {
@@ -119,6 +130,7 @@ int main(void)
 		printk("Failed to protect B0 flash, cancel startup.\n\r");
 		return 0;
 	}
+	print_and_clear_reset_reason();
 
 	uint32_t s0_addr = s0_address_read();
 	uint32_t s1_addr = s1_address_read();
