@@ -111,4 +111,10 @@ config APP_EVENT_MANAGER_POSTPROCESS_HOOKS
 	  This option is here for optimisation purposes.
 	  When postprocess hook is not in use the related code may be removed.
 
+config APP_EVENT_MANAGER_STACK_SIZE
+  int "Event manager stack size"
+  default 2048
+  help
+    Set stack size for the work queue serving events
+
 endif # APP_EVENT_MANAGER
