@@ -19,11 +19,7 @@ static void event_processor_fn(struct k_work *work);
 
 struct app_event_manager_event_display_bm _app_event_manager_event_display_bm;
 
-#define THREAD_PRIORITY		(K_LOWEST_APPLICATION_THREAD_PRIO - 1)
 static K_WORK_DEFINE(event_processor, event_processor_fn);
-K_THREAD_STACK_DEFINE(event_process_stack_area, CONFIG_APP_EVENT_MANAGER_STACK_SIZE);
-static struct k_work_q event_process_work_q;
-
 static sys_slist_t eventq = SYS_SLIST_STATIC_INIT(&eventq);
 static struct k_spinlock lock;
 
@@ -231,20 +227,15 @@ void _event_submit(struct app_event_header *aeh)
 	sys_slist_append(&eventq, &aeh->node);
 	k_spin_unlock(&lock, key);
 
-	k_work_submit_to_queue(&event_process_work_q, &event_processor);
+	k_work_submit(&event_processor);
 }
 
 int app_event_manager_init(void)
 {
 	int ret = 0;
-	struct k_work_queue_config cfg = { .name = "event_process", };
 
 	__ASSERT_NO_MSG(_event_type_list_end - _event_type_list_start <=
 			CONFIG_APP_EVENT_MANAGER_MAX_EVENT_CNT);
-
-	k_work_queue_init(&event_process_work_q);
-	k_work_queue_start(&event_process_work_q, event_process_stack_area,
-      K_THREAD_STACK_SIZEOF(event_process_stack_area), THREAD_PRIORITY, &cfg);
 
 	log_event_init();
 
