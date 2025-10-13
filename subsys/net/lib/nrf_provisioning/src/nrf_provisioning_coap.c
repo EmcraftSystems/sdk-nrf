@@ -18,6 +18,10 @@
 #include "nrf_provisioning_coap.h"
 #include "nrf_provisioning_jwt.h"
 
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+#include <stdlib.h>
+#endif
+
 LOG_MODULE_REGISTER(nrf_provisioning_coap, CONFIG_NRF_PROVISIONING_LOG_LEVEL);
 
 #if !defined(CONFIG_NRF_PROVISIONING_ROOT_CA_SEC_TAG)
@@ -356,7 +360,11 @@ static int generate_auth_token(char **auth_token)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	*auth_token = malloc(tok_len);
+#else
 	*auth_token = k_malloc(tok_len);
+#endif
 	if (!*auth_token) {
 		return -ENOMEM;
 	}
@@ -374,7 +382,11 @@ static int generate_auth_token(char **auth_token)
 	return 0;
 
 fail:
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	free(*auth_token);
+#else
 	k_free(*auth_token);
+#endif
 	*auth_token = NULL;
 
 	return ret;
@@ -672,7 +684,11 @@ int nrf_provisioning_coap_req(struct nrf_provisioning_coap_context *const coap_c
 	nrf_provisioning_codec_teardown();
 
 	if (auth_token) {
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+		free(auth_token);
+#else
 		k_free(auth_token);
+#endif
 	}
 
 	socket_close(&coap_ctx->connect_socket);

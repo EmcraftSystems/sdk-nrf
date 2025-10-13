@@ -6,6 +6,7 @@
 menuconfig NRF_PROVISIONING_COAP
 	bool "nRF Provisioning COAP"
 	select EXPERIMENTAL
+	imply COMMON_LIBC_MALLOC
 	imply COAP
 	imply COAP_CLIENT
 

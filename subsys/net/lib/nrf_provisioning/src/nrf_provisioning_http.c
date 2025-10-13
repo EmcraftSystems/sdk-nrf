@@ -160,7 +160,11 @@ static int generate_auth_header(char **auth_hdr_out)
 	prefix_len = max_auth_prefix_len();
 
 	hdr_size = prefix_len + tok_len + postfix_len + 1;
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	*auth_hdr_out = malloc(hdr_size);
+#else
 	*auth_hdr_out = k_malloc(hdr_size);
+#endif
 	if (!*auth_hdr_out) {
 		return -ENOMEM;
 	}
@@ -188,7 +192,11 @@ static int generate_auth_header(char **auth_hdr_out)
 	return 0;
 
 fail:
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	free(*auth_hdr_out);
+#else
 	k_free(*auth_hdr_out);
+#endif
 	*auth_hdr_out = NULL;
 
 	return ret;
@@ -228,7 +236,11 @@ static int gen_result_url(struct rest_client_req_context *const req)
 	int ret;
 
 	buff_sz = sizeof(API_POST_RSLT);
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	url = malloc(buff_sz);
+#else
 	url = k_malloc(buff_sz);
+#endif
 	if (!url) {
 		ret = -ENOMEM;
 		return ret;
@@ -280,7 +292,11 @@ static int gen_provisioning_url(struct rest_client_req_context *const req)
 	buff_sz = sizeof(API_CMDS_TEMPLATE) +
 		strlen(after) + strlen(rx_buf_sz) + strlen(tx_buf_sz) +
 		strlen(mvernmb) + strlen(cver);
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	url = malloc(buff_sz);
+#else
 	url = k_malloc(buff_sz);
+#endif
 	if (!url) {
 		ret = -ENOMEM;
 		return ret;
@@ -376,11 +392,19 @@ static int nrf_provisioning_responses_req(struct nrf_provisioning_http_context *
 
 clean_up:
 	if (req->url) {
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+		free((char *)req->url);
+#else
 		k_free((char *)req->url);
+#endif
 		req->url = NULL;
 	}
 	if (auth_hdr) {
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+		free(auth_hdr);
+#else
 		k_free(auth_hdr);
+#endif
 	}
 
 	return ret;
@@ -409,8 +433,8 @@ int nrf_provisioning_http_req(struct nrf_provisioning_http_context *const rest_c
 	bool finished = false;
 
 #ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
-	rx_buf = k_malloc(CONFIG_NRF_PROVISIONING_RX_BUF_SZ);
-	tx_buf = k_malloc(tx_buf_sz);
+	rx_buf = malloc(CONFIG_NRF_PROVISIONING_RX_BUF_SZ);
+	tx_buf = malloc(tx_buf_sz);
 	if (!rx_buf || !tx_buf) {
 		ret = -ENOMEM;
 		goto done;
@@ -449,9 +473,17 @@ int nrf_provisioning_http_req(struct nrf_provisioning_http_context *const rest_c
 
 		LOG_INF("Requesting commands");
 		ret = rest_client_request(&req, &resp);
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+		free(auth_hdr);
+#else
 		k_free(auth_hdr);
+#endif
 		auth_hdr = NULL;
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+		free((char *)req.url);
+#else
 		k_free((char *)req.url);
+#endif
 		req.url = NULL;
 
 		if (ret < 0) {
@@ -539,17 +571,25 @@ int nrf_provisioning_http_req(struct nrf_provisioning_http_context *const rest_c
 
 #ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
 done:
-	k_free(rx_buf);
-	k_free(tx_buf);
+	free(rx_buf);
+	free(tx_buf);
 #endif
 
 	nrf_provisioning_codec_teardown();
 
 	if (req.url) {
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+		free((char *)req.url);
+#else
 		k_free((char *)req.url);
+#endif
 	}
 	if (auth_hdr) {
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+		free(auth_hdr);
+#else
 		k_free(auth_hdr);
+#endif
 	}
 
 	return ret;
