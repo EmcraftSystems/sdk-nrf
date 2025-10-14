@@ -6,6 +6,9 @@
 
 #include <string.h>
 #include <stdio.h>
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+#include <stdlib.h>
+#endif
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -92,7 +95,7 @@ int nrf_provisioning_codec_setup(struct cdc_context *const cdc_ctx,
 	o_fmt_data.at_buff_sz = at_buff_sz;
 
 #ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
-	i_fmt_data = k_malloc(sizeof(struct cdc_in_fmt_data));
+	i_fmt_data = malloc(sizeof(struct cdc_in_fmt_data));
 
 	if (i_fmt_data == NULL) {
 		LOG_ERR("provisioning buf alloc error");
@@ -111,12 +114,16 @@ int nrf_provisioning_codec_setup(struct cdc_context *const cdc_ctx,
 int nrf_provisioning_codec_teardown(void)
 {
 	for (int i = 0; i < CONFIG_NRF_PROVISIONING_CBOR_RECORDS; i++) {
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+		free(o_fmt_data.msgs[i]);
+#else
 		k_free(o_fmt_data.msgs[i]);
+#endif
 		o_fmt_data.msgs[i] = NULL;
 	}
 
 #ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
-	k_free(i_fmt_data);
+	free(i_fmt_data);
 #endif
 
 	return 0;
@@ -298,7 +305,11 @@ static int exec_at_cmd(struct command *cmd_req, struct cdc_out_fmt_data *out)
 	}
 
 	while (true) {
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+		resp = malloc(resp_sz);
+#else
 		resp = k_malloc(resp_sz);
+#endif
 		if (!resp) {
 			LOG_ERR("Unable to write response msg field");
 			return -ENOMEM;
@@ -313,7 +324,11 @@ static int exec_at_cmd(struct command *cmd_req, struct cdc_out_fmt_data *out)
 			int type = 0;
 
 			LOG_DBG("Buffer too small for AT response, retrying");
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+			free(resp);
+#else
 			k_free(resp);
+#endif
 			resp = NULL;
 			if (sscanf(out->at_buff, "AT%%KEYGEN=%d,%d,%*s", &tag, &type) == 2) {
 				LOG_DBG("Clear sec_tag %d, type %d", tag, type);
@@ -386,19 +401,31 @@ static int write_config(struct command *cmd_req, struct cdc_out_fmt_data *out)
 		max_value_sz = MAX(max_value_sz, pair->properties_tstrtstr.len + 1);
 	}
 
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	key = malloc(max_key_sz);
+#else
 	key = k_malloc(max_key_sz);
+#endif
 	if (!key) {
 		ret = -ENOMEM;
 		goto exit;
 	}
 
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	value = malloc(max_value_sz);
+#else
 	value = k_malloc(max_value_sz);
+#endif
 	if (!value) {
 		ret = -ENOMEM;
 		goto exit;
 	}
 
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	resp = malloc(resp_sz);
+#else
 	resp = k_malloc(resp_sz);
+#endif
 	if (!resp) {
 		ret = -ENOMEM;
 		goto exit;
@@ -434,15 +461,27 @@ static int write_config(struct command *cmd_req, struct cdc_out_fmt_data *out)
 	}
 
 	/* No error to report */
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+	free(resp);
+#else
 	k_free(resp);
+#endif
 	resp = NULL;
 
 exit:
 	if (key) {
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+		free(key);
+#else
 		k_free(key);
+#endif
 	}
 	if (value) {
+#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+		free(value);
+#else
 		k_free(value);
+#endif
 	}
 
 	/* Keeps track of response messages to be freed once the whole responses request is send */
