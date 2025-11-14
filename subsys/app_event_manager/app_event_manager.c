@@ -218,6 +218,8 @@ static void event_processor_fn(struct k_work *work)
 
 void _event_submit(struct app_event_header *aeh)
 {
+	int ret;
+
 	__ASSERT_NO_MSG(aeh);
 	APP_EVENT_ASSERT_ID(aeh->type_id);
 
@@ -231,7 +233,11 @@ void _event_submit(struct app_event_header *aeh)
 	sys_slist_append(&eventq, &aeh->node);
 	k_spin_unlock(&lock, key);
 
-	k_work_submit_to_queue(&event_process_work_q, &event_processor);
+	ret = k_work_submit_to_queue(&event_process_work_q, &event_processor);
+	if (ret == -ENODEV) {
+		LOG_WRN("Lost %s (App Event Manager hasn't started)",
+			aeh->type_id->name);
+	}
 }
 
 int app_event_manager_init(void)
