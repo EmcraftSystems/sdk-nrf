@@ -36,6 +36,9 @@
 #include <zephyr/posix/sys/socket.h>
 #endif
 
+#include <zephyr/logging/log.h>
+LOG_MODULE_DECLARE(nrf_modem, CONFIG_NRF_MODEM_LIB_LOG_LEVEL);
+
 #if defined(CONFIG_NET_SOCKETS_OFFLOAD)
 
 /* Macro used to define a private Connection Manager connectivity context type.
@@ -453,23 +456,30 @@ static int nrf9x_socket_offload_connect(void *obj, const struct sockaddr *addr,
 					socklen_t addrlen)
 {
 	int sd = OBJ_TO_SD(obj);
+	char *family = "";
 	int retval;
 
 	if (addr->sa_family == AF_INET) {
 		struct nrf_sockaddr_in ipv4;
 
+		family = "IPv4";
 		z_to_nrf_ipv4(addr, &ipv4);
 		retval = nrf_connect(sd, (struct nrf_sockaddr *)&ipv4,
 				     sizeof(struct nrf_sockaddr_in));
 	} else if (addr->sa_family == AF_INET6) {
 		struct nrf_sockaddr_in6 ipv6;
 
+		family = "IPv6";
 		z_to_nrf_ipv6(addr, &ipv6);
 		retval = nrf_connect(sd, (struct nrf_sockaddr *)&ipv6,
 				  sizeof(struct nrf_sockaddr_in6));
 	} else {
 		/* Pass in raw to library as it is non-IP address. */
 		retval = nrf_connect(sd, (void *)addr, addrlen);
+	}
+
+	if (retval && errno != EHOSTUNREACH) {
+		LOG_ERR("nrf_connect(%s) errno %d", family, errno);
 	}
 
 	return retval;
