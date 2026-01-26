@@ -1176,6 +1176,11 @@ static int get_modem_info(void)
 	return 0;
 }
 
+__weak const char *peer_fw_version(void)
+{
+	return NULL;
+}
+
 static int cell_info_json_encode(cJSON *const obj, const struct lte_lc_cell *const cell_inf)
 {
 	__ASSERT_NO_MSG(obj != NULL);
@@ -1465,18 +1470,22 @@ static int encode_modem_info_json_object(struct modem_param_info *modem, cJSON *
 			ret = json_add_str_cs(device_obj, NRF_CLOUD_JSON_KEY_APP_VER, app_ver);
 		}
 
-#if defined(CONFIG_NRF_CLOUD_FOTA_SMP)
 		if (!ret) {
-			char *smp_ver = NULL;
+			char *smp_ver;
 
-			(void)nrf_cloud_fota_smp_version_get(&smp_ver);
+			smp_ver = (char *)peer_fw_version();
+
+#if defined(CONFIG_NRF_CLOUD_FOTA_SMP)
+			if (!smp_ver) {
+				(void)nrf_cloud_fota_smp_version_get(&smp_ver);
+			}
+#endif /* CONFIG_NRF_CLOUD_FOTA_SMP */
 
 			if (smp_ver) {
 				ret = json_add_str_cs(device_obj, NRF_CLOUD_JSON_KEY_SMP_APP_VER,
 						      smp_ver);
 			}
 		}
-#endif /* CONFIG_NRF_CLOUD_FOTA_SMP */
 
 		if (ret) {
 			cJSON_Delete(device_obj);
