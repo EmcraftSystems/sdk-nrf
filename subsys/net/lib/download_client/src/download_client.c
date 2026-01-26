@@ -835,6 +835,7 @@ void download_thread(void *client, void *a, void *b)
 			rc = client_connect(dl);
 
 			if (rc) {
+				k_free(dl->buf);
 				continue;
 			}
 
