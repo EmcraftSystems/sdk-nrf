@@ -117,6 +117,60 @@ enum location_event_id {
 	LOCATION_EVT_FALLBACK,
 };
 
+/* List of reasons for location method failure */
+enum location_method_failure_reason_type {
+	/** Invalid location error reason. */
+	LOCMTHD_FAIL_INVALID,
+
+	/** Location method timed out */
+	LOCMTHD_FAIL_TIMEOUT,
+
+	/** Groundfix failed due to no ground stations. */
+	LOCMTHD_FAIL_GROUNDFIX_NO_GROUND_STATIONS,
+
+	/** Groundfix failed due to PDN context being inactive */
+	LOCMTHD_FAIL_GROUNDFIX_NO_PDN,
+
+	/** Groundfix failed due to cloud error */
+	LOCMTHD_FAIL_GROUNDFIX_CLOUD_FAIL,
+
+	/** Groundfix failed due to external handler error */
+	LOCMTHD_FAIL_GROUNDFIX_EXTERNAL_FAIL,
+
+	/** GNSS failed due to PVT response read error */
+	LOCMTHD_FAIL_GNSS_PVT_READ_ERROR,
+
+	/** GNSS failed due to visibility obstruction */
+	LOCMTHD_FAIL_GNSS_VISIBILITY_OBSTRUCTED,
+
+	/** GNSS was prohibited by the modem operating mode */
+	LOCMTHD_FAIL_GNSS_MODEM_MODE_PROHIBITS,
+
+	/**
+	 * GNSS could not start due to configuration issue:
+	 * Could not set fix interval
+	 */
+	LOCMTHD_FAIL_GNSS_FIX_INTERVAL_SET_FAIL,
+
+	/**
+	 * GNSS could not start due to configuration issue:
+	 * Could not set elevation threshold
+	 */
+	LOCMTHD_FAIL_GNSS_ELEVATION_THRESHOLD_SET_FAIL,
+
+	/**
+	 * GNSS could not start due to configuration issue:
+	 * Could not set use case
+	 */
+	LOCMTHD_FAIL_GNSS_USE_CASE_SET_FAIL,
+
+	/** System state prevented GNSS from starting */
+	LOCMTHD_FAIL_GNSS_START_PROHIBITED,
+
+	/** GNSS failed to start */
+	LOCMTHD_FAIL_GNSS_START_FAIL,
+};
+
 /** Result of the external cloud location request. */
 enum location_ext_result {
 	/** Cloud location request was successful. */
@@ -263,10 +317,27 @@ struct location_data {
 };
 
 #if defined(CONFIG_LOCATION_DATA_DETAILS)
+#if defined(CONFIG_LOCATION_METHOD_FAILURE_REASON)
+
+/* Contains a detailed reason for a fallback or failure */
+struct location_method_failure_reason {
+	/** The general location method failure type  */
+	enum location_method_failure_reason_type type;
+
+	/** The specific error code responsible */
+	int code;
+};
+
+#endif
+
 /** Location error information. */
 struct location_data_error {
 	/** Data details at the time of error. */
 	struct location_data_details details;
+
+#if defined(CONFIG_LOCATION_METHOD_FAILURE_REASON)
+	struct location_method_failure_reason reason;
+#endif
 };
 
 /** Information for an unknown location result. */
@@ -287,6 +358,10 @@ struct location_data_fallback {
 	enum location_event_id cause;
 	/** Data details at the time of a timeout or an error that caused the fallback. */
 	struct location_data_details details;
+
+#if defined(CONFIG_LOCATION_METHOD_FAILURE_REASON)
+	struct location_method_failure_reason reason;
+#endif
 };
 #endif
 

@@ -49,6 +49,7 @@ static void method_cloud_location_positioning_work_fn(struct k_work *work)
 	struct wifi_scan_info *scan_wifi_info = NULL;
 	struct lte_lc_cells_info *scan_cellular_info = NULL;
 	int err = 0;
+	enum location_method_failure_reason_type reason = LOCMTHD_FAIL_INVALID;
 
 #if defined(CONFIG_LOCATION_METHOD_WIFI)
 	k_sem_reset(&wifi_scan_ready);
@@ -79,6 +80,7 @@ static void method_cloud_location_positioning_work_fn(struct k_work *work)
 	if (scan_cellular_info == NULL && scan_wifi_info == NULL) {
 		LOG_WRN("No cellular neighbor cells or Wi-Fi access points found");
 		err = -ENODATA;
+		reason = LOCMTHD_FAIL_GROUNDFIX_NO_GROUND_STATIONS;
 		goto end;
 	}
 
@@ -112,6 +114,7 @@ static void method_cloud_location_positioning_work_fn(struct k_work *work)
 		 */
 		LOG_WRN("Default PDN context is NOT active, cannot retrieve a location");
 		err = -EFAULT;
+		reason = LOCMTHD_FAIL_GROUNDFIX_NO_PDN;
 		goto end;
 	}
 
@@ -134,6 +137,7 @@ static void method_cloud_location_positioning_work_fn(struct k_work *work)
 	err = cloud_service_location_get(&params, &location);
 	if (err) {
 		LOG_ERR("Failed to acquire location using cloud location, error: %d", err);
+		reason = LOCMTHD_FAIL_GROUNDFIX_CLOUD_FAIL;
 	} else {
 		location_result.latitude = location.latitude;
 		location_result.longitude = location.longitude;
@@ -147,7 +151,7 @@ end:
 	if (err == -ETIMEDOUT) {
 		location_core_event_cb_timeout();
 	} else if (err) {
-		location_core_event_cb_error();
+		location_core_event_cb_error(reason, err);
 	}
 	running = false;
 }
