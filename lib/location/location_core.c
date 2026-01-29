@@ -498,9 +498,14 @@ int location_core_location_get(const struct location_config *config)
 	return location_core_location_get_pos();
 }
 
-void location_core_event_cb_error(void)
+void location_core_event_cb_error(enum location_method_failure_reason_type reason, int code)
 {
 	loc_req_info.current_event_data.id = LOCATION_EVT_ERROR;
+	
+#if defined(CONFIG_LOCATION_METHOD_FAILURE_REASON)
+	loc_req_info.current_event_data.error.reason.type = reason;
+	loc_req_info.current_event_data.error.reason.code = code;
+#endif
 
 	location_core_event_cb(NULL);
 }
@@ -508,6 +513,11 @@ void location_core_event_cb_error(void)
 void location_core_event_cb_timeout(void)
 {
 	loc_req_info.current_event_data.id = LOCATION_EVT_TIMEOUT;
+	
+#if defined(CONFIG_LOCATION_METHOD_FAILURE_REASON)
+	loc_req_info.current_event_data.error.reason.type = LOCMTHD_FAIL_TIMEOUT;
+	loc_req_info.current_event_data.error.reason.code = 0;
+#endif
 
 	location_core_event_cb(NULL);
 }
@@ -595,6 +605,10 @@ void location_core_cloud_location_ext_result_set(
 	case LOCATION_EXT_RESULT_ERROR:
 	default:
 		loc_req_info.current_event_data.id = LOCATION_EVT_ERROR;
+#if defined(CONFIG_LOCATION_METHOD_FAILURE_REASON)
+		loc_req_info.current_event_data.error.reason.type = LOCMTHD_FAIL_GROUNDFIX_EXTERNAL_FAIL;
+		loc_req_info.current_event_data.error.reason.code = 0;
+#endif
 		break;
 	}
 
@@ -730,10 +744,13 @@ static void location_core_event_cb_fn(struct k_work *work)
 						.next_method = requested_method,
 						.cause = loc_req_info.current_event_data.id,
 						.details = *details,
+#if defined(CONFIG_LOCATION_METHOD_FAILURE_REASON)
+						.reason = loc_req_info.current_event_data.error.reason,
+#endif /* CONFIG_LOCATION_METHOD_FAILURE_REASON */
 					}
 				};
 				location_utils_event_dispatch(&fallback);
-#endif
+#endif /* CONFIG_LOCATION_DATA_DETAILS */
 			}
 
 			location_core_current_event_data_init(requested_method);

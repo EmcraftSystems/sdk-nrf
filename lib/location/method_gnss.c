@@ -983,6 +983,7 @@ cleanup:
 
 static void method_gnss_pvt_work_fn(struct k_work *item)
 {
+	int err;
 	struct nrf_modem_gnss_pvt_data_frame pvt_data;
 	static struct location_data location_result = { 0 };
 
@@ -991,9 +992,10 @@ static void method_gnss_pvt_work_fn(struct k_work *item)
 		return;
 	}
 
-	if (nrf_modem_gnss_read(&pvt_data, sizeof(pvt_data), NRF_MODEM_GNSS_DATA_PVT) != 0) {
+	err = nrf_modem_gnss_read(&pvt_data, sizeof(pvt_data), NRF_MODEM_GNSS_DATA_PVT);
+	if (err != 0) {
 		LOG_ERR("Failed to read PVT data from GNSS");
-		location_core_event_cb_error();
+		location_core_event_cb_error(LOCMTHD_FAIL_GNSS_PVT_READ_ERROR, err);
 		return;
 	}
 
@@ -1037,7 +1039,7 @@ static void method_gnss_pvt_work_fn(struct k_work *item)
 		if (method_gnss_tracked_satellites(&pvt_data) < VISIBILITY_DETECTION_SAT_LIMIT) {
 			LOG_DBG("GNSS visibility obstructed, canceling");
 			method_gnss_cancel();
-			location_core_event_cb_error();
+			location_core_event_cb_error(LOCMTHD_FAIL_GNSS_VISIBILITY_OBSTRUCTED, 0);
 		}
 
 		visibility_detection_done = true;
@@ -1302,15 +1304,30 @@ static void method_gnss_prepare_work_fn(struct k_work *work)
 static void method_gnss_start_work_fn(struct k_work *work)
 {
 	int err = 0;
+	int suberr = 0;
+	enum location_method_failure_reason_type reported_reason = LOCMTHD_FAIL_INVALID;
+	int reported_err = 0;
 
 	/* Configure GNSS to continuous tracking mode */
-	err = nrf_modem_gnss_fix_interval_set(1);
-	if (err == -NRF_EACCES) {
+	suberr = nrf_modem_gnss_fix_interval_set(1);
+	if (suberr == -NRF_EACCES) {
 		LOG_WRN("Modem's system or functional mode doesn't allow GNSS usage");
+		reported_err = suberr;
+		reported_reason = LOCMTHD_FAIL_GNSS_MODEM_MODE_PROHIBITS;
+	} else if (suberr) {
+		reported_err = suberr;
+		reported_reason = LOCMTHD_FAIL_GNSS_FIX_INTERVAL_SET_FAIL;
 	}
+	err |= suberr;
 
 #if defined(CONFIG_NRF_CLOUD_AGNSS_ELEVATION_MASK)
-	err |= nrf_modem_gnss_elevation_threshold_set(CONFIG_NRF_CLOUD_AGNSS_ELEVATION_MASK);
+	suberr = nrf_modem_gnss_elevation_threshold_set(CONFIG_NRF_CLOUD_AGNSS_ELEVATION_MASK);
+	if (suberr && !reported_err)
+	{
+		reported_err = suberr;
+		reported_reason = LOCMTHD_FAIL_GNSS_ELEVATION_THRESHOLD_SET_FAIL;
+	}
+	err |= suberr;
 #endif
 
 	insuf_timewin_count = 0;
@@ -1334,11 +1351,17 @@ static void method_gnss_start_work_fn(struct k_work *work)
 		break;
 	}
 
-	err |= nrf_modem_gnss_use_case_set(use_case);
+	suberr = nrf_modem_gnss_use_case_set(use_case);
+	if (suberr && !reported_err)
+	{
+		reported_err = suberr;
+		reported_reason = LOCMTHD_FAIL_GNSS_USE_CASE_SET_FAIL;
+	}
+	err |= suberr;
 
 	if (err) {
 		LOG_ERR("Failed to configure GNSS");
-		location_core_event_cb_error();
+		location_core_event_cb_error(reported_reason, reported_err);
 		running = false;
 		return;
 	}
@@ -1351,7 +1374,7 @@ static void method_gnss_start_work_fn(struct k_work *work)
 		 */
 		if (running) {
 			LOG_WRN("GNSS not allowed to start");
-			location_core_event_cb_error();
+			location_core_event_cb_error(LOCMTHD_FAIL_GNSS_START_PROHIBITED, 0);
 			running = false;
 		}
 		return;
@@ -1360,7 +1383,7 @@ static void method_gnss_start_work_fn(struct k_work *work)
 	err = nrf_modem_gnss_start();
 	if (err) {
 		LOG_ERR("Failed to start GNSS, error: %d", err);
-		location_core_event_cb_error();
+		location_core_event_cb_error(LOCMTHD_FAIL_GNSS_START_FAIL, err);
 		running = false;
 		return;
 	}

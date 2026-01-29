@@ -64,7 +64,7 @@ int location_core_location_get(const struct location_config *config);
 int location_core_cancel(void);
 
 void location_core_event_cb(const struct location_data *location);
-void location_core_event_cb_error(void);
+void location_core_event_cb_error(enum location_method_failure_reason_type reason, int code);
 void location_core_event_cb_timeout(void);
 #if defined(CONFIG_LOCATION_SERVICE_EXTERNAL) && defined(CONFIG_NRF_CLOUD_AGNSS)
 void location_core_event_cb_agnss_request(const struct nrf_modem_gnss_agnss_data_frame *request);
