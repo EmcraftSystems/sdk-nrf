@@ -418,6 +418,10 @@ Modem libraries
 
 |no_changes_yet_note|
 
+* :ref:`lib_location` library:
+
+  * Fixed a bug where GNSS was never stopped if the :c:func:`location_cloud_location_ext_result_set` function was called during GNSS method execution.
+
 Multiprotocol Service Layer libraries
 -------------------------------------
 
