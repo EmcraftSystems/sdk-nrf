@@ -22,6 +22,10 @@
 
 #include <zephyr/logging/log.h>
 
+#ifdef CONFIG_APP_WORK_QUEUE
+#include <app_workq.h>
+#endif
+
 LOG_MODULE_REGISTER(nrf_cloud_pgps, CONFIG_NRF_CLOUD_GPS_LOG_LEVEL);
 
 #include "nrf_cloud_mem.h"
@@ -129,7 +133,6 @@ static int pgps_request_all(void);
 
 K_WORK_DEFINE(prediction_work, prediction_work_handler);
 K_TIMER_DEFINE(prediction_timer, prediction_timer_handler, NULL);
-
 
 static void discard_prediction_buffer(void)
 {
@@ -569,7 +572,15 @@ static void prediction_work_handler(struct k_work *work)
 
 static void prediction_timer_handler(struct k_timer *dummy)
 {
+	/* Run prediction work off the system work queue: flash reads and
+	 * prediction injection can take seconds and would otherwise starve
+	 * other system-work-queue consumers (e.g. inter-MCU PING senders).
+	 */
+#ifdef CONFIG_APP_WORK_QUEUE
+	k_work_submit_to_queue(app_workq_get(), &prediction_work);
+#else
 	k_work_submit(&prediction_work);
+#endif
 }
 
 static void start_expiration_timer(int pnum, int64_t cur_gps_sec)
