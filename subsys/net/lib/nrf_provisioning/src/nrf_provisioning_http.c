@@ -418,6 +418,10 @@ int nrf_provisioning_http_req(struct nrf_provisioning_http_context *const rest_c
 	char *rx_buf, *tx_buf = NULL;
 	size_t tx_buf_sz = MAX(CONFIG_NRF_PROVISIONING_TX_BUF_SZ,
 			CONFIG_NRF_PROVISIONING_CODEC_AT_CMD_LEN);
+#elif defined(CONFIG_NRF_PROVISIONING_USE_KMALLOC)
+	char *rx_buf = NULL, *tx_buf = NULL;
+	size_t tx_buf_sz = MAX(CONFIG_NRF_PROVISIONING_TX_BUF_SZ,
+			CONFIG_NRF_PROVISIONING_CODEC_AT_CMD_LEN);
 #else
 	static char tx_buf[MAX(CONFIG_NRF_PROVISIONING_TX_BUF_SZ,
 			CONFIG_NRF_PROVISIONING_CODEC_AT_CMD_LEN)];
@@ -435,6 +439,13 @@ int nrf_provisioning_http_req(struct nrf_provisioning_http_context *const rest_c
 #ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
 	rx_buf = malloc(CONFIG_NRF_PROVISIONING_RX_BUF_SZ);
 	tx_buf = malloc(tx_buf_sz);
+	if (!rx_buf || !tx_buf) {
+		ret = -ENOMEM;
+		goto done;
+	}
+#elif defined(CONFIG_NRF_PROVISIONING_USE_KMALLOC)
+	rx_buf = k_malloc(CONFIG_NRF_PROVISIONING_RX_BUF_SZ);
+	tx_buf = k_malloc(tx_buf_sz);
 	if (!rx_buf || !tx_buf) {
 		ret = -ENOMEM;
 		goto done;
@@ -573,6 +584,10 @@ int nrf_provisioning_http_req(struct nrf_provisioning_http_context *const rest_c
 done:
 	free(rx_buf);
 	free(tx_buf);
+#elif defined(CONFIG_NRF_PROVISIONING_USE_KMALLOC)
+done:
+	k_free(rx_buf);
+	k_free(tx_buf);
 #endif
 
 	nrf_provisioning_codec_teardown();

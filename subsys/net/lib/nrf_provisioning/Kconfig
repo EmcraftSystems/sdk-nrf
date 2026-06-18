@@ -89,6 +89,19 @@ config NRF_PROVISIONING_USE_MALLOC
 	bool "Use dynamic memory allocation for large structures"
 	default n
 
+config NRF_PROVISIONING_USE_KMALLOC
+	bool "Allocate provisioning RX/TX buffers from the kernel heap"
+	depends on !NRF_PROVISIONING_USE_MALLOC
+	default n
+	help
+	  Allocate the provisioning HTTP RX/TX buffers with k_malloc() for the
+	  duration of a provisioning exchange instead of reserving them as
+	  permanent static arrays (the default when USE_MALLOC is off). Trades a
+	  large static reservation (RX_BUF_SZ + TX_BUF_SZ) for transient kernel-
+	  heap usage, freeing static RAM on memory-constrained images. Requires
+	  CONFIG_HEAP_MEM_POOL_SIZE large enough to hold RX_BUF_SZ + TX_BUF_SZ on
+	  top of other concurrent kernel-heap users.
+
 rsource "Kconfig.nrf_provisioning_http"
 
 rsource "Kconfig.nrf_provisioning_coap"
