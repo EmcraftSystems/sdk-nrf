@@ -430,7 +430,7 @@ int nrf_provisioning_http_req(struct nrf_provisioning_http_context *const rest_c
 #endif
 
 	char *auth_hdr = NULL;
-	struct rest_client_req_context req;
+	struct rest_client_req_context req = {0};
 	struct rest_client_resp_context resp;
 	int ret;
 	struct cdc_context cdc_ctx;
