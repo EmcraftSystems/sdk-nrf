@@ -133,8 +133,10 @@ int nrf_provisioning_codec_teardown(void)
 
 #ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
 	free(i_fmt_data);
+	i_fmt_data = NULL;
 #elif defined(CONFIG_NRF_PROVISIONING_USE_KMALLOC)
 	k_free(i_fmt_data);
+	i_fmt_data = NULL;
 #endif
 
 	return 0;
