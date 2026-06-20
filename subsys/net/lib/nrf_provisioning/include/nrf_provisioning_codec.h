@@ -37,7 +37,7 @@ struct cdc_context {
 	size_t o_data_sz; /* Size of decoded commands */
 };
 
-#ifdef CONFIG_NRF_PROVISIONING_USE_MALLOC
+#if defined(CONFIG_NRF_PROVISIONING_USE_MALLOC) || defined(CONFIG_NRF_PROVISIONING_USE_KMALLOC)
 struct cdc_in_fmt_data {
 	/* Data */
 	struct commands cmds;
